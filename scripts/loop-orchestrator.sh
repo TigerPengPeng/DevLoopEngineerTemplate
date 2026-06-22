@@ -213,7 +213,7 @@ trigger_phase() {
 
     if [[ "$YES_AUTO_CONFIRM" == "true" ]]; then
         # yes | 自动输入 y 回答所有确认提示
-        echo "$prompt" | yes | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
+        { yes | head -20; echo "$prompt"; } | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
     else
         # 不自动确认，需要人工干预
         echo "$prompt" | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
