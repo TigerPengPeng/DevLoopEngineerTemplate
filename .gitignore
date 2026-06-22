@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+.next/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Secrets
+**/secrets/**
+**/credentials/**
+**/*_key*
+**/*_secret*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Worktrees (临时)
+worktree-*/
+
+# Loop 临时状态 (可选: 如不想提交运行时 state)
+# .loop/phases/*-state.md
+# loop-run-log.md

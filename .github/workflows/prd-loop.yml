@@ -1,0 +1,27 @@
+# PRD Loop — 事件驱动（需求输入 / 回归 drift 反馈）
+# 可通过 workflow_dispatch 手动触发，或由 regression-loop 的 issue 创建触发
+name: PRD Loop
+
+on:
+  workflow_dispatch:
+    inputs:
+      requirement:
+        description: '需求描述或 drift 信号来源'
+        required: true
+        default: 'manual-trigger'
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  prd-loop:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.issue.labels.*.name, 'prd-input')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run PRD Loop
+        env:
+          REQUIREMENT: ${{ github.event.inputs.requirement || github.event.issue.body }}
+        run: |
+          echo "PRD Loop triggered with: $REQUIREMENT"
+          echo "TODO: Invoke agent with prd-author skill"
+          echo "Output: docs/PRD.md updated, .loop/phases/prd-state.md updated"

@@ -1,0 +1,124 @@
+# 闭环系统阶段 Loop 注册表（机器可读）
+# 基于 loop-engineering patterns/registry.yaml 格式
+
+version: 1
+loops:
+  - id: prd
+    name: PRD Loop
+    goal: 从模糊需求产出结构化 PRD，约束产品范围
+    trigger: event
+    level: L1
+    skills: [prd-author, loop-verifier]
+    state_file: .loop/phases/prd-state.md
+    output: docs/PRD.md
+    freeze_condition: verifier-pass + human-confirm-mvp
+    downstream: design
+    budget_per_run: 100k
+    cadence: on-demand
+
+  - id: design
+    name: Design Loop
+    goal: 基于 PRD 产出视觉交互规范
+    trigger: upstream-frozen
+    level: L1
+    skills: [design-extractor, loop-verifier]
+    state_file: .loop/phases/design-state.md
+    output: docs/DESIGN.md
+    freeze_condition: verifier-pass + human-confirm-style
+    downstream: arch
+    budget_per_run: 100k
+    cadence: on-demand
+
+  - id: arch
+    name: Architecture Loop
+    goal: 基于 PRD+DESIGN 产出技术架构和任务清单
+    trigger: upstream-frozen
+    level: L1
+    skills: [arch-planner, loop-verifier]
+    state_file: .loop/phases/arch-state.md
+    output: [docs/ARCHITECTURE.md, TODO.md]
+    freeze_condition: verifier-pass + human-confirm-techstack
+    downstream: code
+    budget_per_run: 150k
+    cadence: on-demand
+
+  - id: code
+    name: Code Loop
+    goal: 按 TODO.md 顺序逐个实现模块
+    trigger: upstream-frozen
+    level: L2
+    skills: [code-implementer, minimal-fix, loop-verifier]
+    state_file: .loop/phases/code-state.md
+    output: git-commit
+    freeze_condition: all-tasks-done + unit-tests-pass
+    downstream: test
+    budget_per_run: 200k
+    cadence: continuous
+    isolation: worktree
+    max_fix_attempts: 3
+
+  - id: test
+    name: Test Loop
+    goal: 集成测试 + 端到端主流程验证
+    trigger: upstream-complete
+    level: L2
+    skills: [test-runner, loop-verifier]
+    state_file: .loop/phases/test-state.md
+    output: test-report
+    freeze_condition: all-acceptance-criteria-tested + main-flow-pass
+    downstream: regression
+    budget_per_run: 150k
+    cadence: on-demand
+
+  - id: regression
+    name: Regression Loop
+    goal: 回归验证 + 偏差分类 + 反馈信号产出
+    trigger: upstream-pass
+    level: L1
+    skills: [regression-verifier, minimal-fix, loop-verifier]
+    state_file: .loop/phases/regression-state.md
+    output: regression-report
+    freeze_condition: regression-all-pass
+    downstream: prd
+    budget_per_run: 100k
+    cadence: 1d
+    max_fix_attempts: 3
+    feedback_signals:
+      - type: regression
+        target: code
+      - type: drift
+        target: prd
+      - type: new-need
+        target: human-inbox
+
+coordination:
+  priority: [regression, test, code, arch, design, prd]
+  conflict_detection: acting_on-field-in-state-files
+  freeze_unfreeze: documented-in-LOOP-STATE.md
+
+safety:
+  denylist:
+    - ".env*"
+    - "**/secrets/**"
+    - "**/credentials/**"
+    - "auth/**"
+    - "payments/**"
+    - "billing/**"
+    - "**/migrations/**"
+  auto_merge: false
+  human_gates:
+    - auth-security
+    - payments-billing
+    - infrastructure
+    - dependency-upgrades
+    - files-changed-gt-10
+    - fix-attempt-3-failed
+    - prd-positioning-change
+    - unfreeze-request
+  kill_switch: loop-pause-all-label-or-state-flag
+
+budget:
+  daily_cap: 3M
+  per_run_max_subagents: 3
+  per_task_max_fix_attempts: 3
+  on_exceed: pause-schedulers-and-notify

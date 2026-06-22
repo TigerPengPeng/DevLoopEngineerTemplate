@@ -1,0 +1,31 @@
+# Regression Loop — 每日巡检 + 事件触发
+name: Regression Loop
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 每日 06:00 UTC 巡检
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  regression-loop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check kill switch
+        run: |
+          if grep -q 'paused: true' LOOP-STATE.md; then
+            echo "Kill switch active, skipping regression loop"
+            exit 0
+          fi
+      - name: Run Regression Loop
+        run: |
+          echo "Starting Regression Loop"
+          echo "TODO: Invoke agent with regression-verifier skill"
+          echo "TODO: Run regression tests"
+          echo "TODO: Compare snapshots"
+          echo "TODO: Classify findings (regression/drift/new-need)"
+          echo "TODO: Update LOOP-STATE.md with feedback signals"
+          npm ci
+          npm run test:regression || true

@@ -1,0 +1,21 @@
+# Test Loop — 由 Code Loop 所有任务完成触发
+name: Test Loop
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  test-loop:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'code-complete') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Test Loop
+        run: |
+          echo "Code Loop complete, starting Test Loop"
+          echo "TODO: Invoke agent with test-runner skill"
+          echo "TODO: Run loop-verifier to confirm test coverage"
+          npm ci
+          npm test

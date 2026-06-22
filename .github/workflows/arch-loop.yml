@@ -1,0 +1,25 @@
+# Arch Loop — 由 DESIGN.md draft-frozen 触发
+name: Arch Loop
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/DESIGN.md'
+    types: [closed]
+
+jobs:
+  arch-loop:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check DESIGN frozen status
+        run: |
+          if grep -q 'draft-frozen\|frozen' docs/DESIGN.md; then
+            echo "DESIGN is frozen, triggering Arch Loop"
+            echo "TODO: Invoke agent with arch-planner skill"
+          else
+            echo "DESIGN not frozen, skipping"
+            exit 0
+          fi

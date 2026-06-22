@@ -1,0 +1,32 @@
+# Code Loop — 由 TODO.md frozen 触发 / 连续执行
+name: Code Loop
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_index:
+        description: 'TODO.md 任务序号（从1开始）'
+        required: false
+        default: '0'
+  pull_request:
+    paths:
+      - 'TODO.md'
+    types: [closed]
+
+jobs:
+  code-loop:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check TODO frozen and find next task
+        run: |
+          if grep -q 'frozen' TODO.md 2>/dev/null || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TODO is frozen or manual trigger, starting Code Loop"
+            echo "TODO: Invoke agent with code-implementer skill in worktree"
+            echo "TODO: Run loop-verifier on output"
+            echo "TODO: If PASS, commit; if REJECT, minimal-fix (max 3 attempts)"
+          else
+            echo "TODO not frozen, skipping"
+            exit 0
+          fi

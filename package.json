@@ -1,0 +1,15 @@
+{
+  "name": "loop-engineering-template",
+  "version": "0.1.0",
+  "description": "Loop Engineering 全生命周期闭环系统项目模板",
+  "scripts": {
+    "test": "echo 'TODO: configure test runner' && exit 0",
+    "test:unit": "echo 'TODO: configure unit tests' && exit 0",
+    "test:integration": "echo 'TODO: configure integration tests' && exit 0",
+    "test:regression": "echo 'TODO: configure regression tests' && exit 0",
+    "lint": "echo 'TODO: configure linter' && exit 0",
+    "build": "echo 'TODO: configure build' && exit 0"
+  },
+  "keywords": ["loop-engineering", "agent", "automation"],
+  "license": "MIT"
+}

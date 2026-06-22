@@ -1,0 +1,15 @@
+# Loop Audit — 就绪度审计，每次 PR 检查
+name: Loop Audit
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Loop Readiness Audit
+        run: |
+          npx @cobusgreyling/loop-audit . --suggest || true

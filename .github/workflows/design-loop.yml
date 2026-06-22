@@ -1,0 +1,25 @@
+# Design Loop — 由 PRD.md draft-frozen 触发
+name: Design Loop
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/PRD.md'
+    types: [closed]
+
+jobs:
+  design-loop:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PRD frozen status
+        run: |
+          if grep -q 'draft-frozen\|frozen' docs/PRD.md; then
+            echo "PRD is frozen, triggering Design Loop"
+            echo "TODO: Invoke agent with design-extractor skill"
+          else
+            echo "PRD not frozen, skipping"
+            exit 0
+          fi
