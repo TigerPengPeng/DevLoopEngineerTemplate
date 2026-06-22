@@ -142,3 +142,71 @@ L0(文档) → L1(报告) → L2(辅助) → L3(无人值守)
 ```
 每级稳定 2 周后再升级。永远不要为新项目跳过 L1。
 
+
+---
+
+## 🚀 Orchestrator 使用指南（方案 3：Git 外包模式）
+
+### 核心架构
+
+本模板实现了 **方案 3：Git 外包模式**，这是最安全的自动化架构：
+
+| 职责 | Agent | Orchestrator |
+|------|-------|--------------|
+| 编写代码/文档 | ✅ | ❌ |
+| 执行 git add/commit | ❌ | ✅ |
+| 安全沙箱保护 | ✅ | — |
+| 自动确认提示 | ✅（通过 yes） | — |
+
+### 为什么这样设计？
+
+1. **安全**：保留 sandbox 保护，不使用 `--dangerously-bypass-approvals-and-sandbox`
+2. **可控**：所有 git 操作由 orchestrator 统一管理，可审计、可回滚
+3. **零人工确认**：用 `yes | codex exec` 自动回答安全提示
+4. **最小权限**：Agent 只拥有写代码的权限，不具备破坏性操作的能力
+
+### 使用方式
+
+```bash
+# 1. 检查状态
+./scripts/loop-status.sh
+
+# 2. 单次执行（推荐用于调试）
+./scripts/loop-orchestrator.sh --once
+
+# 3. Watch 模式（持续轮询）
+./scripts/loop-orchestrator.sh
+
+# 4. 手动触发指定阶段
+./scripts/loop-orchestrator.sh --once --phase design
+
+# 5. 禁用自动提交（只写代码不 commit）
+./scripts/loop-orchestrator.sh --once --no-auto-commit
+
+# 6. 禁用自动确认（需要人工按 y）
+./scripts/loop-orchestrator.sh --once --no-auto-confirm
+```
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `POLL_INTERVAL` | 10 | Watch 模式轮询间隔（秒） |
+| `AUTO_COMMIT` | true | 是否自动执行 git commit |
+| `YES_AUTO_CONFIRM` | true | 是否用 yes 自动确认安全提示 |
+| `CODEX_MODEL` | — | 指定使用的模型 |
+| `REQUIREMENT` | — | PRD 阶段的需求输入 |
+
+### 工作流
+
+```
+用户设置 Current phase → Orchestrator 触发 Agent
+    ↓
+Agent 编写代码/文档（不执行 git）
+    ↓
+Agent 标记 phase-state 为 done
+    ↓
+Orchestrator 检测到 done，自动执行 git add + commit
+    ↓
+Orchestrator 触发下一个 phase
+```
