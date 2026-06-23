@@ -12,8 +12,9 @@ set -euo pipefail
 #
 # 用法:
 #   ./scripts/loop-orchestrator.sh                  # watch 模式
-#   ./scripts/loop-orchestrator.sh --once           # 单次检查
+#   ./scripts/loop-orchestrator.sh --once           # 单次检查（推进到下一个阻塞点）
 #   ./scripts/loop-orchestrator.sh --check          # 仅检查状态
+#   ./scripts/loop-orchestrator.sh --reset-from arch # 重置 arch 及下游全部阶段为 idle
 #   AUTO_COMMIT=true ./scripts/loop-orchestrator.sh # 启用自动提交
 # ============================================================
 
@@ -27,8 +28,11 @@ POLL_INTERVAL="${POLL_INTERVAL:-10}"
 CODEX_CMD="${CODEX_CMD:-codex}"
 CODEX_MODEL="${CODEX_MODEL:-}"
 SANDBOX_MODE="${SANDBOX_MODE:-workspace-write}"
-AUTO_COMMIT="${AUTO_COMMIT:-true}"           # 是否自动 git commit
-YES_AUTO_CONFIRM="${YES_AUTO_CONFIRM:-true}" # 是否用 yes 自动确认安全提示
+AUTO_COMMIT="${AUTO_COMMIT:-true}"
+YES_AUTO_CONFIRM="${YES_AUTO_CONFIRM:-true}"
+
+# 阶段顺序（用于 reset-downstream 迭代）
+ALL_PHASES=(prd design arch code test regression)
 
 # ---------- 阶段流转 ----------
 
@@ -84,6 +88,11 @@ get_current_phase() {
         || echo "idle"
 }
 
+set_current_phase() {
+    local phase="$1"
+    sed -i '' "s/^Current phase: .*/Current phase: $phase/" "$PROJECT_ROOT/LOOP-STATE.md" 2>/dev/null || true
+}
+
 is_paused() {
     grep -q 'paused: true' "$PROJECT_ROOT/LOOP-STATE.md" 2>/dev/null
 }
@@ -108,6 +117,33 @@ get_phase_last_run() {
     grep '^Last run:' "$state_file" 2>/dev/null | sed 's/^Last run: *//' || echo "—"
 }
 
+# 重置单个阶段为 idle
+reset_phase() {
+    local phase="$1"
+    local state_file="$PROJECT_ROOT/.loop/phases/${phase}-state.md"
+    if [[ -f "$state_file" ]]; then
+        sed -i '' "s/^Phase: .*/Phase: idle/" "$state_file" 2>/dev/null || true
+        log "  Reset $phase -> idle"
+    fi
+}
+
+# 重置指定阶段及其全部下游阶段为 idle
+reset_downstream() {
+    local from_phase="$1"
+    local resetting=false
+    for p in "${ALL_PHASES[@]}"; do
+        if [[ "$p" == "$from_phase" ]]; then
+            resetting=true
+        fi
+        if $resetting; then
+            reset_phase "$p"
+        fi
+    done
+    # 同时更新 LOOP-STATE.md 的 Current phase
+    set_current_phase "$from_phase"
+    log "Current phase set to: $from_phase"
+}
+
 append_run_log() {
     local loop="$1"
     local task="$2"
@@ -119,8 +155,7 @@ append_run_log() {
     echo "| $ts | $loop | $task | — | — | — | $tokens | $result |" >> "$log_file"
 }
 
-# ========== Git 自动提交（方案 3 核心） ==========
-# Agent 只写代码，git 操作由 orchestrator 统一管理
+# ========== Git 自动提交 ==========
 
 auto_git_commit() {
     local phase="$1"
@@ -134,7 +169,6 @@ auto_git_commit() {
 
     cd "$PROJECT_ROOT"
 
-    # 检查是否有改动
     if git diff --quiet && git diff --cached --quiet; then
         log "No changes to commit"
         return 0
@@ -142,13 +176,9 @@ auto_git_commit() {
 
     log "Auto-committing changes for $phase phase..."
 
-    # 添加所有改动（包括新增文件）
     git add -A
-
-    # 生成 commit message
     local commit_msg="${prefix}: ${phase} Loop completed - $(date '+%H:%M:%S')"
 
-    # 执行提交（在 orchestrator 中执行，不需要 sandbox 确认）
     if git commit -m "$commit_msg"; then
         log "✅ Committed: $commit_msg"
         return 0
@@ -175,15 +205,12 @@ trigger_phase() {
     log "  Auto-commit: $AUTO_COMMIT"
     log "  Yes auto-confirm: $YES_AUTO_CONFIRM"
 
-    # 标记阶段为 running
     local state_file="$PROJECT_ROOT/.loop/phases/${phase}-state.md"
     local ts
     ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     sed -i '' "s/^Last run: .*/Last run: $ts/" "$state_file" 2>/dev/null || true
     sed -i '' "s/^Phase: .*/Phase: running/" "$state_file" 2>/dev/null || true
 
-    # 构建 codex exec 命令
-    # 注意：不使用 --dangerously-bypass，保留 sandbox 安全
     local cmd=("$CODEX_CMD" "exec")
     cmd+=("-C" "$PROJECT_ROOT")
     cmd+=("-s" "$SANDBOX_MODE")
@@ -196,36 +223,26 @@ trigger_phase() {
     local output_file="/tmp/loop-${phase}-$(date +%s).out"
     cmd+=("-o" "$output_file")
 
-    # 读取 prompt 模板
     local prompt
     prompt="$(cat "$prompt_file")"
 
-    # PRD 阶段替换需求占位符
     if [[ "$phase" == "prd" ]] && [[ -n "${REQUIREMENT:-}" ]]; then
         prompt="${prompt//\{\{REQUIREMENT\}\}/$REQUIREMENT}"
     fi
 
     log "Invoking: ${cmd[*]}"
 
-    # 执行 agent
-    # 方案 3：用 yes 自动回答安全确认，但保留 sandbox 保护
     local exit_code=0
 
     if [[ "$YES_AUTO_CONFIRM" == "true" ]]; then
-        # yes | 自动输入 y 回答所有确认提示
         { yes | head -20; echo "$prompt"; } | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
     else
-        # 不自动确认，需要人工干预
         echo "$prompt" | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
     fi
 
     if [[ $exit_code -eq 0 ]]; then
         log "✅ Agent completed successfully"
-
-        # 方案 3 核心：Orchestrator 统一执行 git commit
         auto_git_commit "$phase"
-
-        # 标记阶段为 done
         sed -i '' "s/^Phase: .*/Phase: done/" "$state_file" 2>/dev/null || true
         append_run_log "$phase" "execute" "success" "unknown"
         return 0
@@ -249,22 +266,37 @@ check_and_trigger() {
         return 0
     fi
 
-    # 情况 1: 当前阶段已完成 → 触发下一阶段
+    # 情况 1: 当前阶段已完成 → 推进到下一阶段
     if is_phase_done "$current_phase"; then
         local next_phase
         next_phase="$(phase_next "$current_phase")"
 
         if [[ -z "$next_phase" ]]; then
-            log "Phase $current_phase is the last phase (regression done)"
+            log "Phase $current_phase is the last phase (regression done), setting idle"
+            set_current_phase "idle"
             return 0
         fi
 
         if is_phase_idle "$next_phase"; then
             log "Phase $current_phase done, triggering next phase: $next_phase"
+            set_current_phase "$next_phase"
             trigger_phase "$next_phase"
-        else
-            log "Phase $current_phase done, but $next_phase already started, skipping"
+            return 0
         fi
+
+        # 下一阶段非 idle（done/running/blocked）
+        # 如果下一阶段也是 done，说明是需求变更后的重跑场景
+        # 自动重置下一阶段为 idle 并触发
+        if is_phase_done "$next_phase"; then
+            log "Phase $current_phase done, $next_phase was done (re-run), resetting and triggering"
+            reset_phase "$next_phase"
+            set_current_phase "$next_phase"
+            trigger_phase "$next_phase"
+            return 0
+        fi
+
+        # 下一阶段正在运行或阻塞
+        log "Phase $current_phase done, but $next_phase in progress (running/blocked), waiting"
         return 0
     fi
 
@@ -284,6 +316,7 @@ check_and_trigger() {
 main() {
     local mode="watch"
     local force_phase=""
+    local reset_from=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -300,6 +333,11 @@ main() {
                 mode="force"
                 shift 2
                 ;;
+            --reset-from)
+                reset_from="$2"
+                mode="reset"
+                shift 2
+                ;;
             --no-auto-commit)
                 AUTO_COMMIT="false"
                 shift
@@ -314,9 +352,10 @@ loop-orchestrator.sh — Loop Engineering 闭环调度器（方案 3）
 
 用法:
   ./scripts/loop-orchestrator.sh                    # watch 模式
-  ./scripts/loop-orchestrator.sh --once             # 单次检查
+  ./scripts/loop-orchestrator.sh --once             # 单次检查（推进到下一个阻塞点）
   ./scripts/loop-orchestrator.sh --check            # 仅检查状态
-  ./scripts/loop-orchestrator.sh --once --phase design  # 手动触发
+  ./scripts/loop-orchestrator.sh --reset-from arch  # 重置 arch 及下游全部阶段为 idle
+  ./scripts/loop-orchestrator.sh --phase design     # 强制触发单个阶段
   ./scripts/loop-orchestrator.sh --no-auto-commit   # 禁用自动 git commit
   ./scripts/loop-orchestrator.sh --no-auto-confirm  # 禁用 yes 自动确认
 
@@ -328,11 +367,19 @@ loop-orchestrator.sh — Loop Engineering 闭环调度器（方案 3）
   YES_AUTO_CONFIRM  是否用 yes 自动确认安全提示（默认 true）
   REQUIREMENT       PRD 阶段的需求输入文本
 
+需求变更工作流:
+  1. 修改 docs/PRD.md（版本号递增）
+  2. ./scripts/loop-orchestrator.sh --reset-from <phase>
+     例如 PRD 变更影响架构: --reset-from design
+     例如只影响代码: --reset-from code
+  3. ./scripts/loop-orchestrator.sh  (watch 自动推进)
+
 架构说明（方案 3）:
   ✅ Agent 只写代码，不执行 git commit
   ✅ Orchestrator 统一管理 git 操作
   ✅ 保留 sandbox 安全保护
-  ✅ 用 yes 自动回答安全确认提示
+  ✅ done→done 自动重置重跑（需求变更不再卡死）
+  ✅ --reset-from 一键重置下游阶段
 HELP
                 exit 0
                 ;;
@@ -360,12 +407,21 @@ HELP
             phase="$(get_current_phase)"
             log "Current phase: $phase"
             log "Paused: $(is_paused && echo 'yes' || echo 'no')"
-            for p in prd design arch code test regression; do
+            for p in "${ALL_PHASES[@]}"; do
                 local done_status idle_status
                 is_phase_done "$p" && done_status="done" || done_status="-"
                 is_phase_idle "$p" && idle_status="idle" || idle_status="-"
                 log "  $p: done=$done_status idle=$idle_status last_run=$(get_phase_last_run $p)"
             done
+            ;;
+        reset)
+            if [[ -z "$reset_from" ]]; then
+                log "ERROR: --reset-from requires a phase name (prd/design/arch/code/test/regression)"
+                exit 1
+            fi
+            log "Resetting from phase: $reset_from (including all downstream phases)"
+            reset_downstream "$reset_from"
+            log "Reset complete. Run ./scripts/loop-orchestrator.sh to resume."
             ;;
         force)
             if [[ -z "$force_phase" ]]; then
