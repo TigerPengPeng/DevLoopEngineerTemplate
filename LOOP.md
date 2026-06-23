@@ -157,6 +157,44 @@ Regression (done) → 检查反馈信号:
 
 在 `LOOP-STATE.md` 中设置 `paused: true` 可暂停 orchestrator 的所有触发。
 
+## 专业 Agent 目录
+
+闭环系统采用两层 agent 体系：阶段 agent（`.loop/skills/`）负责编排，专业 agent（`.loop/agents/`）负责领域执行。
+
+### 角色列表
+
+| 部门 | Agent | dispatch_tag | 适用阶段 |
+|------|-------|-------------|---------|
+| Engineering | 前端开发专家 | `frontend` | code |
+| Engineering | 后端架构师 | `backend` | arch, code |
+| Engineering | 安全工程师 | `security` | code |
+| Engineering | 代码审查员 | `review` | code |
+| Engineering | DevOps 自动化工程师 | `devops` | arch, code |
+| Engineering | 数据库优化专家 | `database` | arch, code |
+| Design | UI 设计师 | `ui` | design |
+| Design | 交互设计师 | `interaction` | design |
+| Product | 产品经理 | `product` | prd |
+| Product | 技术文档工程师 | `docs` | arch, regression |
+
+### 任务标签派发
+
+Arch Loop 拆分 TODO.md 时根据任务性质自动标注 `[type: xxx]` 标签。Code Loop 读取标签后加载对应专业 agent 人格文件作为上下文采纳：
+
+```
+- [ ] [type: frontend] 实现用户登录页面
+- [ ] [type: backend] 实现用户认证 API
+- [ ] [type: database] 设计用户表结构
+```
+
+- 无标签任务使用阶段 agent 默认人格执行（向后兼容）
+- 标签与 agent 映射在 `registry.yaml` 的 `dispatch` 段集中维护
+- 编排器触发阶段 agent 时自动注入 `.loop/agents/_index.md` 作为上下文
+- 新增 agent：按 `templates/AGENT.template.md` 创建文件，在 `_index.md` 和 `registry.yaml` 注册
+
+### 人格采纳模型
+
+阶段 agent 加载专业 agent 的人格文件作为上下文采纳，不是 spawn 独立子进程。专业 agent 的领域规则覆盖通用编码规则，但 Loop 安全约束以阶段 agent 为准。
+
 ## 升级路径
 
 ```

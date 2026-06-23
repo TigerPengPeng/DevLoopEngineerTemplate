@@ -91,6 +91,114 @@ loops:
       - type: new-need
         target: human-inbox
 
+# 专业 Agent 目录（领域专家角色）
+agents:
+  - id: frontend-developer
+    name: 前端开发专家
+    department: engineering
+    dispatch_tag: frontend
+    phases: [code]
+    file: .loop/agents/engineering/frontend-developer.md
+
+  - id: backend-architect
+    name: 后端架构师
+    department: engineering
+    dispatch_tag: backend
+    phases: [arch, code]
+    file: .loop/agents/engineering/backend-architect.md
+
+  - id: security-engineer
+    name: 安全工程师
+    department: engineering
+    dispatch_tag: security
+    phases: [code]
+    file: .loop/agents/engineering/security-engineer.md
+
+  - id: code-reviewer
+    name: 代码审查员
+    department: engineering
+    dispatch_tag: review
+    phases: [code]
+    file: .loop/agents/engineering/code-reviewer.md
+
+  - id: devops-automator
+    name: DevOps 自动化工程师
+    department: engineering
+    dispatch_tag: devops
+    phases: [arch, code]
+    file: .loop/agents/engineering/devops-automator.md
+
+  - id: database-optimizer
+    name: 数据库优化专家
+    department: engineering
+    dispatch_tag: database
+    phases: [arch, code]
+    file: .loop/agents/engineering/database-optimizer.md
+
+  - id: ui-designer
+    name: UI 设计师
+    department: design
+    dispatch_tag: ui
+    phases: [design]
+    file: .loop/agents/design/ui-designer.md
+
+  - id: interaction-designer
+    name: 交互设计师
+    department: design
+    dispatch_tag: interaction
+    phases: [design]
+    file: .loop/agents/design/interaction-designer.md
+
+  - id: product-manager
+    name: 产品经理
+    department: product
+    dispatch_tag: product
+    phases: [prd]
+    file: .loop/agents/product/product-manager.md
+
+  - id: technical-writer
+    name: 技术文档工程师
+    department: product
+    dispatch_tag: docs
+    phases: [arch, regression]
+    file: .loop/agents/product/technical-writer.md
+
+# 任务标签 → 专业 Agent 派发映射
+dispatch:
+  - tag: frontend
+    agent: .loop/agents/engineering/frontend-developer.md
+    phases: [code]
+  - tag: backend
+    agent: .loop/agents/engineering/backend-architect.md
+    phases: [arch, code]
+  - tag: security
+    agent: .loop/agents/engineering/security-engineer.md
+    phases: [code]
+  - tag: review
+    agent: .loop/agents/engineering/code-reviewer.md
+    phases: [code]
+  - tag: devops
+    agent: .loop/agents/engineering/devops-automator.md
+    phases: [arch, code]
+  - tag: database
+    agent: .loop/agents/engineering/database-optimizer.md
+    phases: [arch, code]
+  - tag: ui
+    agent: .loop/agents/design/ui-designer.md
+    phases: [design]
+  - tag: interaction
+    agent: .loop/agents/design/interaction-designer.md
+    phases: [design]
+  - tag: product
+    agent: .loop/agents/product/product-manager.md
+    phases: [prd]
+  - tag: docs
+    agent: .loop/agents/product/technical-writer.md
+    phases: [arch, regression]
+  - tag: default
+    agent: null
+    description: 无标签时使用阶段 agent 自身人格
+
 coordination:
   priority: [regression, test, code, arch, design, prd]
   conflict_detection: acting_on-field-in-state-files

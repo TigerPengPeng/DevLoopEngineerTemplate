@@ -5,6 +5,14 @@
 
 ## 输入
 - docs/PRD.md
+- .loop/agents/_index.md（专业 agent 目录）
+
+## 派发视角
+
+按 PRD 页面类型采纳专业 agent 视角：
+- 视觉为主（展示页、营销页）→ 采纳 .loop/agents/design/ui-designer.md 视角
+- 交互为主（表单流、操作面板）→ 采纳 .loop/agents/design/interaction-designer.md 视角
+- 混合型 → 同时采纳两个 agent 视角
 
 ## 输出
 在 docs/DESIGN.md 中编写完整的设计规范：

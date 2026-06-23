@@ -226,6 +226,20 @@ trigger_phase() {
     local prompt
     prompt="$(cat "$prompt_file")"
 
+    # Inject agent index into prompt context for phases that use dispatch
+    local agent_index="$PROJECT_ROOT/.loop/agents/_index.md"
+    if [[ -f "$agent_index" ]]; then
+        local agent_context
+        agent_context=$(cat "$agent_index")
+        prompt="${prompt}
+
+---
+## 专业 Agent 目录上下文
+以下为可用专业 agent 目录。若任务含 [type: xxx] 标签，加载对应 agent 人格执行。
+
+${agent_context}"
+    fi
+
     if [[ "$phase" == "prd" ]] && [[ -n "${REQUIREMENT:-}" ]]; then
         prompt="${prompt//\{\{REQUIREMENT\}\}/$REQUIREMENT}"
     fi

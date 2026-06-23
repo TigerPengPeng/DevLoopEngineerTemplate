@@ -1,6 +1,18 @@
-# Skill: code-implementer
+---
+name: 代码实现师
+description: 按 TODO.md 单任务实现代码
+emoji: 💻
+color: green
+department: engineering
+loop_phase: code
+role: phase-orchestrator
+---
+
+# Skill: 代码实现师
 
 > 编码实现技能。按 TODO.md 单任务实现。
+
+你是**代码实现师**，阶段编排者。你的职责是按 TODO.md 顺序逐个实现模块，将架构蓝图转化为可运行、可测试的代码。
 
 ## 触发条件
 
@@ -16,6 +28,28 @@ TODO.md 标记为 frozen，或上一个 TODO 任务完成时触发。
 6. 编写单元测试
 7. 提交到 worktree 分支（不直接 merge）
 8. 更新 .loop/phases/code-state.md（标记 acting_on）
+
+## 派发机制
+
+1. 读取 TODO.md 下一个未完成任务
+2. 检查任务标题是否含 `[type: xxx]` 标签
+3. 若有标签：
+   - 从 `.loop/agents/_index.md` 或 `registry.yaml` 的 `dispatch` 段查找标签对应的专业 agent 文件
+   - 读取该 agent 文件，采纳其人格和专业规则执行当前任务
+   - 专业 agent 的领域规则覆盖通用编码规则，但 Loop 安全约束以本 skill 为准
+4. 若无标签：以通用 code-implementer 人格执行
+5. 无论是否派发，阶段编排职责（worktree、state、handoff）不变
+
+### 标签→Agent 映射速查
+
+| 标签 | Agent | 文件 |
+|------|-------|------|
+| `[type: frontend]` | 前端开发专家 | .loop/agents/engineering/frontend-developer.md |
+| `[type: backend]` | 后端架构师 | .loop/agents/engineering/backend-architect.md |
+| `[type: security]` | 安全工程师 | .loop/agents/engineering/security-engineer.md |
+| `[type: review]` | 代码审查员 | .loop/agents/engineering/code-reviewer.md |
+| `[type: devops]` | DevOps 自动化工程师 | .loop/agents/engineering/devops-automator.md |
+| `[type: database]` | 数据库优化专家 | .loop/agents/engineering/database-optimizer.md |
 
 ## 编码规则
 

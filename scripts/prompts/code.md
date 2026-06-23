@@ -7,6 +7,7 @@
 - docs/PRD.md
 - docs/DESIGN.md
 - docs/ARCHITECTURE.md
+- .loop/agents/_index.md（专业 agent 目录）
 
 ## 输出
 按照 TODO.md 逐个任务实现：
@@ -16,6 +17,14 @@
 - 一次只完成一个任务
 - 不添加未要求的功能
 - 不重构无关代码
+
+## 任务标签派发 ⚠️
+
+1. 读取 TODO.md 下一个未完成任务
+2. 检查任务标题是否含 `[type: xxx]` 标签
+3. 若有标签：从 `.loop/agents/_index.md` 查找对应 agent 文件，读取并采纳其人格和专业规则执行
+4. 若无标签：以通用 code-implementer 人格执行
+5. 专业 agent 的领域规则覆盖通用编码规则，但 Loop 安全约束不变
 
 ## 重要约束 ⚠️
 1. **不要执行任何 git 命令**（git add / git commit / git push）

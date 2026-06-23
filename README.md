@@ -2,6 +2,7 @@
 
 > 基于 [loop-engineering](https://github.com/cobusgreyling/loop-engineering) 的全生命周期自动 prompt 代理闭环系统模板。
 > 覆盖 PRD → UI 设计 → 系统设计 → 编码 → 测试 → 功能回归验证的完整需求周期。
+> 结合 [agency-agent](https://github.com/jnMetaCode/agency-agents-zh) 角色目录模式，支持任务标签派发专业 agent。
 
 ## 快速开始
 
@@ -36,6 +37,40 @@ npx @cobusgreyling/loop-audit . --suggest
      └──── 反馈信号（缺陷、偏差、新需求）──────┘
 ```
 
+## 两层 Agent 体系
+
+系统采用两层 agent 架构：
+
+- **阶段 agent**（`.loop/skills/`）：9 个阶段编排技能，负责阶段内状态管理、worktree 隔离、handoff
+- **专业 agent**（`.loop/agents/`）：10 个领域专家角色，由阶段 agent 通过任务标签派发加载
+
+### 专业 Agent 目录
+
+| 部门 | Agent | dispatch_tag | 适用阶段 |
+|------|-------|-------------|---------|
+| Engineering | 前端开发专家 | `frontend` | code |
+| Engineering | 后端架构师 | `backend` | arch, code |
+| Engineering | 安全工程师 | `security` | code |
+| Engineering | 代码审查员 | `review` | code |
+| Engineering | DevOps 自动化工程师 | `devops` | arch, code |
+| Engineering | 数据库优化专家 | `database` | arch, code |
+| Design | UI 设计师 | `ui` | design |
+| Design | 交互设计师 | `interaction` | design |
+| Product | 产品经理 | `product` | prd |
+| Product | 技术文档工程师 | `docs` | arch, regression |
+
+### 任务标签派发
+
+Arch Loop 在拆分 TODO.md 任务时自动标注 `[type: xxx]` 标签。Code Loop 读取标签后加载对应专业 agent 人格执行：
+
+```
+- [ ] [type: frontend] 实现用户登录页面
+- [ ] [type: backend] 实现用户认证 API
+- [ ] [type: database] 设计用户表结构
+```
+
+无标签任务使用阶段 agent 默认人格执行（向后兼容）。标签与 agent 映射在 `registry.yaml` 的 `dispatch` 段集中维护。
+
 ## 目录结构
 
 ```
@@ -44,16 +79,21 @@ npx @cobusgreyling/loop-audit . --suggest
 ├── LOOP-STATE.md          # 全局状态
 ├── loop-budget.md         # token 预算
 ├── loop-run-log.md        # 运行日志
-├── TODO.md                # 任务清单
+├── TODO.md                # 任务清单（含 [type:xxx] 标签）
 ├── docs/
 │   ├── PRD.md             # 产品需求文档
 │   ├── DESIGN.md          # 视觉交互规范
 │   └── ARCHITECTURE.md    # 技术架构文档
 ├── .loop/
+│   ├── agents/            # 专业 agent 角色目录
+│   │   ├── engineering/   # 6 个工程类 agent
+│   │   ├── design/        # 2 个设计类 agent
+│   │   ├── product/       # 2 个产品类 agent
+│   │   └── _index.md      # 角色目录索引
 │   ├── phases/            # 各阶段状态文件
-│   ├── skills/            # 9 个技能 SKILL.md
-│   ├── templates/         # 文档模板
-│   └── registry.yaml      # 机器可读 loop 注册表
+│   ├── skills/            # 9 个阶段编排技能 SKILL.md
+│   ├── templates/         # 文档模板（含 AGENT.template.md）
+│   └── registry.yaml      # 机器可读注册表（loops + agents + dispatch）
 ├── tests/
 │   ├── regression/        # 回归测试
 │   └── snapshots/         # 功能快照
@@ -77,12 +117,12 @@ npx @cobusgreyling/loop-audit . --suggest
 
 ## Orchestrator（自动调度器）
 
-闭环系统通过 `scripts/loop-orchestrator.sh` 实现阶段间自动链式触发。
+闭环系统通过 `scripts/loop-orchestrator.sh` 实现阶段间自动链式触发。编排器在触发阶段 agent 时自动注入 `.loop/agents/_index.md` 作为上下文，让阶段 agent 知道可用的专业 agent 目录。
 
 ### 快速使用
 
 ```bash
-# 查看当前系统状态
+# 查看当前系统状态（含 agent 目录概览）
 ./scripts/loop-status.sh
 
 # 单次检查并触发下一阶段（如果当前阶段 idle 或上游已完成）

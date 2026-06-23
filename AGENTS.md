@@ -46,6 +46,8 @@ npx @cobusgreyling/loop-audit . --suggest
 - 不擅自重构无关代码
 - 匹配项目现有代码风格
 - 修改前必须读取 docs/PRD.md、docs/DESIGN.md、docs/ARCHITECTURE.md
+- Code Loop 派发时须读取 TODO 任务 [type:xxx] 标签对应的专业 agent 人格（见 .loop/agents/_index.md）
+- Arch Loop 拆分 TODO.md 时须为每个任务标注 [type:xxx] 标签
 
 ## 安全门禁
 
