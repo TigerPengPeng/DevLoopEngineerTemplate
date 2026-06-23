@@ -9,6 +9,8 @@ set -euo pipefail
 #   - Agent 只写代码，不执行 git commit
 #   - Orchestrator 检测到 phase 完成后自动提交
 #   - 保留 sandbox 安全机制，用 yes 自动确认安全提示
+#   - 阶段级 agent 人格文件注入到 prompt 中
+#   - loop-verifier 作为独立 codex exec 会话运行（maker/checker 分离）
 #
 # 用法:
 #   ./scripts/loop-orchestrator.sh                  # watch 模式
@@ -69,6 +71,20 @@ phase_commit_prefix() {
         test)       echo "test" ;;
         regression) echo "fix" ;;
         *)          echo "chore" ;;
+    esac
+}
+
+# 返回阶段的 phase-level agent 人格文件路径（空格分隔，相对于 PROJECT_ROOT）
+# 阶段级 agent 直接注入 prompt；任务级派发（arch/code）通过 _index.md + [type:xxx] 动态加载
+phase_agent_files() {
+    case "$1" in
+        prd)        echo ".loop/agents/product/product-manager.md" ;;
+        design)     echo ".loop/agents/design/ui-designer.md .loop/agents/design/interaction-designer.md" ;;
+        arch)       echo "" ;;
+        code)       echo "" ;;
+        test)       echo "" ;;
+        regression) echo ".loop/agents/product/technical-writer.md" ;;
+        *)          echo "" ;;
     esac
 }
 
@@ -188,18 +204,71 @@ auto_git_commit() {
     fi
 }
 
-# ---------- 触发 agent ----------
+# ---------- 构建 prompt（注入 agent 人格） ----------
 
-trigger_phase() {
+build_prompt() {
     local phase="$1"
-    local skill
-    skill="$(phase_skill "$phase")"
     local prompt_file="$PROMPTS_DIR/${phase}.md"
 
     if [[ ! -f "$prompt_file" ]]; then
         log "ERROR: prompt template not found: $prompt_file"
         return 1
     fi
+
+    local prompt
+    prompt="$(cat "$prompt_file")"
+
+    # 阶段级 agent 人格文件注入（prd/design/regression）
+    local agent_files
+    agent_files="$(phase_agent_files "$phase")"
+    if [[ -n "$agent_files" ]]; then
+        for agent_file in $agent_files; do
+            local full_path="$PROJECT_ROOT/$agent_file"
+            if [[ -f "$full_path" ]]; then
+                local agent_content
+                agent_content=$(cat "$full_path")
+                prompt="${prompt}
+
+---
+## 专业 Agent 人格文件: ${agent_file}
+请严格采纳以下 agent 人格的视角、规则和约束执行本阶段任务。其领域规则覆盖通用规则。
+
+${agent_content}"
+                log "  Injected agent: $agent_file"
+            else
+                log "  WARNING: agent file not found: $full_path"
+            fi
+        done
+    fi
+
+    # 任务级派发阶段（arch/code）注入 agent 目录索引，Codex 运行时按 [type:xxx] 动态 cat 对应文件
+    local agent_index="$PROJECT_ROOT/.loop/agents/_index.md"
+    if [[ -f "$agent_index" ]] && [[ -z "$agent_files" ]]; then
+        local agent_context
+        agent_context=$(cat "$agent_index")
+        prompt="${prompt}
+
+---
+## 专业 Agent 目录上下文（任务级派发）
+以下为可用专业 agent 目录。若任务含 [type: xxx] 标签，请读取（cat）对应 agent 人格文件并采纳其规则执行。
+
+${agent_context}"
+    fi
+
+    # PRD 阶段注入需求文本
+    if [[ "$phase" == "prd" ]] && [[ -n "${REQUIREMENT:-}" ]]; then
+        prompt="${prompt//\{\{REQUIREMENT\}\}/$REQUIREMENT}"
+    fi
+
+    echo "$prompt"
+}
+
+# ---------- 触发 agent（主阶段） ----------
+
+trigger_phase() {
+    local phase="$1"
+    local skill
+    skill="$(phase_skill "$phase")"
 
     log "Triggering $phase Loop (skill: $skill)"
     log "  Auto-commit: $AUTO_COMMIT"
@@ -210,6 +279,9 @@ trigger_phase() {
     ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     sed -i '' "s/^Last run: .*/Last run: $ts/" "$state_file" 2>/dev/null || true
     sed -i '' "s/^Phase: .*/Phase: running/" "$state_file" 2>/dev/null || true
+
+    local prompt
+    prompt="$(build_prompt "$phase")"
 
     local cmd=("$CODEX_CMD" "exec")
     cmd+=("-C" "$PROJECT_ROOT")
@@ -223,27 +295,6 @@ trigger_phase() {
     local output_file="/tmp/loop-${phase}-$(date +%s).out"
     cmd+=("-o" "$output_file")
 
-    local prompt
-    prompt="$(cat "$prompt_file")"
-
-    # Inject agent index into prompt context for phases that use dispatch
-    local agent_index="$PROJECT_ROOT/.loop/agents/_index.md"
-    if [[ -f "$agent_index" ]]; then
-        local agent_context
-        agent_context=$(cat "$agent_index")
-        prompt="${prompt}
-
----
-## 专业 Agent 目录上下文
-以下为可用专业 agent 目录。若任务含 [type: xxx] 标签，加载对应 agent 人格执行。
-
-${agent_context}"
-    fi
-
-    if [[ "$phase" == "prd" ]] && [[ -n "${REQUIREMENT:-}" ]]; then
-        prompt="${prompt//\{\{REQUIREMENT\}\}/$REQUIREMENT}"
-    fi
-
     log "Invoking: ${cmd[*]}"
 
     local exit_code=0
@@ -255,16 +306,105 @@ ${agent_context}"
     fi
 
     if [[ $exit_code -eq 0 ]]; then
-        log "✅ Agent completed successfully"
-        auto_git_commit "$phase"
-        sed -i '' "s/^Phase: .*/Phase: done/" "$state_file" 2>/dev/null || true
-        append_run_log "$phase" "execute" "success" "unknown"
-        return 0
+        log "✅ Main agent completed, running independent verifier..."
+
+        # loop-verifier 作为独立 codex exec 会话运行（maker/checker 分离）
+        if trigger_verifier "$phase"; then
+            log "✅ Verifier PASSED, finalizing phase"
+            auto_git_commit "$phase"
+            sed -i '' "s/^Phase: .*/Phase: done/" "$state_file" 2>/dev/null || true
+            append_run_log "$phase" "execute+verify" "success" "unknown"
+            return 0
+        else
+            log "❌ Verifier REJECTED, phase remains blocked"
+            sed -i '' "s/^Phase: .*/Phase: blocked (verifier-rejected)/" "$state_file" 2>/dev/null || true
+            append_run_log "$phase" "execute+verify" "rejected" "unknown"
+            return 1
+        fi
     else
         log "❌ Agent failed with exit code $exit_code"
         sed -i '' "s/^Phase: .*/Phase: blocked (exit $exit_code)/" "$state_file" 2>/dev/null || true
         append_run_log "$phase" "execute" "failed" "unknown"
         return $exit_code
+    fi
+}
+
+# ---------- 独立验证器（maker/checker 分离） ----------
+
+trigger_verifier() {
+    local phase="$1"
+    local verifier_skill="$PROJECT_ROOT/.loop/skills/loop-verifier/SKILL.md"
+
+    if [[ ! -f "$verifier_skill" ]]; then
+        log "  WARNING: loop-verifier SKILL.md not found, skipping verification"
+        return 0
+    fi
+
+    local skill_content
+    skill_content=$(cat "$verifier_skill")
+
+    local verifier_prompt="# Loop Verifier — 独立验证（${phase} 阶段）
+
+你是 Loop 验证器，独立验证者。你不信任实现者的自述，只相信你自己运行验证后看到的原始输出。你的默认倾向是 REJECT，只有找不到拒绝理由时才 PASS。
+
+## 验证技能
+
+${skill_content}
+
+## 当前验证阶段: ${phase}
+
+请按照上述 SKILL.md 中「${phase} 阶段」的验证清单逐项检查。
+
+## 验证步骤
+
+1. 读取本阶段产出物（docs/PRD.md, docs/DESIGN.md, docs/ARCHITECTURE.md, 或源代码，取决于阶段）
+2. 逐项检查验证清单
+3. 运行可执行的验证命令（测试/lint/build）
+4. 检查 diff 范围是否超出任务声明
+5. 检查是否符合三份文档（PRD/DESIGN/ARCHITECTURE）
+
+## 输出格式（必须严格遵循）
+
+\`\`\`
+RESULT: PASS | REJECT
+REASON: [具体原因]
+EVIDENCE: [验证输出/diff 分析/文档对比]
+SUGGESTION: [建议修正方向（若 REJECT）]
+\`\`\`
+
+只输出上述格式，不要输出其他内容。"
+
+    local cmd=("$CODEX_CMD" "exec")
+    cmd+=("-C" "$PROJECT_ROOT")
+    cmd+=("-s" "$SANDBOX_MODE")
+    cmd+=("--skip-git-repo-check")
+
+    if [[ -n "$CODEX_MODEL" ]]; then
+        cmd+=("-m" "$CODEX_MODEL")
+    fi
+
+    local verifier_output="/tmp/loop-${phase}-verify-$(date +%s).out"
+    cmd+=("-o" "$verifier_output")
+
+    log "  Running independent verifier (separate session)..."
+
+    local exit_code=0
+    if [[ "$YES_AUTO_CONFIRM" == "true" ]]; then
+        { yes | head -20; echo "$verifier_prompt"; } | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-verify-console.log || exit_code=$?
+    else
+        echo "$verifier_prompt" | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-verify-console.log || exit_code=$?
+    fi
+
+    # 从 verifier 输出中解析 PASS/REJECT
+    local verifier_result
+    verifier_result=$(cat "$verifier_output" 2>/dev/null || cat /tmp/loop-${phase}-verify-console.log 2>/dev/null || echo "")
+    if echo "$verifier_result" | grep -qiE '^RESULT:\s*PASS'; then
+        log "  Verifier result: PASS"
+        return 0
+    else
+        log "  Verifier result: REJECT (or parse failure)"
+        log "  Verifier output saved to: $verifier_output"
+        return 1
     fi
 }
 
@@ -381,19 +521,21 @@ loop-orchestrator.sh — Loop Engineering 闭环调度器（方案 3）
   YES_AUTO_CONFIRM  是否用 yes 自动确认安全提示（默认 true）
   REQUIREMENT       PRD 阶段的需求输入文本
 
-需求变更工作流:
-  1. 修改 docs/PRD.md（版本号递增）
-  2. ./scripts/loop-orchestrator.sh --reset-from <phase>
-     例如 PRD 变更影响架构: --reset-from design
-     例如只影响代码: --reset-from code
-  3. ./scripts/loop-orchestrator.sh  (watch 自动推进)
-
 架构说明（方案 3）:
   ✅ Agent 只写代码，不执行 git commit
   ✅ Orchestrator 统一管理 git 操作
   ✅ 保留 sandbox 安全保护
   ✅ done→done 自动重置重跑（需求变更不再卡死）
   ✅ --reset-from 一键重置下游阶段
+  ✅ 阶段级 agent 人格文件注入到 prompt
+  ✅ loop-verifier 独立会话运行（maker/checker 分离）
+
+需求变更工作流:
+  1. 修改 docs/PRD.md（版本号递增）
+  2. ./scripts/loop-orchestrator.sh --reset-from <phase>
+     例如 PRD 变更影响架构: --reset-from design
+     例如只影响代码: --reset-from code
+  3. ./scripts/loop-orchestrator.sh  (watch 自动推进)
 HELP
                 exit 0
                 ;;
