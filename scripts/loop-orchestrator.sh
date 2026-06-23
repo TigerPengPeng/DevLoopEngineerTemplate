@@ -26,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROMPTS_DIR="$SCRIPT_DIR/prompts"
 
-POLL_INTERVAL="${POLL_INTERVAL:-10}"
+POLL_INTERVAL="${POLL_INTERVAL:-30}"
 CODEX_CMD="${CODEX_CMD:-codex}"
 CODEX_MODEL="${CODEX_MODEL:-}"
 SANDBOX_MODE="${SANDBOX_MODE:-workspace-write}"
@@ -514,7 +514,7 @@ loop-orchestrator.sh — Loop Engineering 闭环调度器（方案 3）
   ./scripts/loop-orchestrator.sh --no-auto-confirm  # 禁用 yes 自动确认
 
 环境变量:
-  POLL_INTERVAL     轮询间隔秒数（默认 10）
+  POLL_INTERVAL     轮询间隔秒数（默认 30）
   CODEX_CMD         codex 命令路径（默认 codex）
   CODEX_MODEL       模型名称
   AUTO_COMMIT       是否自动 git commit（默认 true）

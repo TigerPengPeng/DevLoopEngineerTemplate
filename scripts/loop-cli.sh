@@ -48,7 +48,7 @@ cmd_help() {
 环境变量:
   YES_AUTO_CONFIRM=true/false  是否自动确认安全提示 (默认 true)
   AUTO_COMMIT=true/false        是否自动 git commit (默认 true)
-  POLL_INTERVAL=N               watch 模式轮询间隔秒数 (默认 10)
+  POLL_INTERVAL=N               watch 模式轮询间隔秒数 (默认 30)
 HELP
 }
 
@@ -102,7 +102,7 @@ cmd_start() {
 }
 
 cmd_watch() {
-    echo "👁️  启动持续监听模式 (每 ${POLL_INTERVAL:-10} 秒轮询)"
+    echo "👁️  启动持续监听模式 (每 ${POLL_INTERVAL:-30} 秒轮询)"
     echo "=================================="
     echo "按 Ctrl+C 停止"
     echo ""
