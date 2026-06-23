@@ -250,3 +250,42 @@ Orchestrator 检测到 done，自动执行 git add + commit
     ↓
 Orchestrator 触发下一个 phase
 ```
+
+
+---
+
+## 💬 Codex Desktop 聊天命令 (Quick Command)
+
+现在你可以直接在 Codex Desktop 聊天中使用 `/loop` 命令启动和管理 Loop，无需切换到终端！
+
+### 🚀 快速开始
+
+在聊天中输入以下任一命令，Agent 会自动识别并执行：
+
+| 命令 | 说明 |
+|------|------|
+| `/loop status` | 📊 查看当前 Loop 状态 |
+| `/loop start "需求描述"` | 🚀 从 PRD 阶段开始完整 Loop |
+| `/loop once` | ⏩ 单次触发当前阶段 |
+| `/loop phase <阶段名>` | 🎯 手动触发指定阶段 (prd/design/arch/code/test/regression) |
+| `/loop watch` | 👁️ 启动持续监听模式 |
+| `/loop pause` | ⏸️ 暂停 Loop |
+| `/loop resume` | ▶️ 恢复 Loop |
+| `/loop help` | ❓ 显示帮助 |
+
+### 💡 使用示例
+
+在 Codex Desktop 聊天中输入：
+
+```
+/loop start "实现一个定时任务调度管理服务，需要有前端管理页面，支持每个任务可配置调度节奏，要支持 docker 部署"
+```
+
+Agent 会自动启动 Loop Orchestrator，实时显示执行进度，并在完成后显示最新状态。
+
+### ⚙️ 工作原理
+
+1. `AGENTS.md` 中定义了 `/loop` 命令的识别规则和执行方式
+2. Agent 识别命令后调用 `./scripts/loop-cli.sh` 包装脚本
+3. 脚本统一处理参数解析、环境变量设置和执行逻辑
+4. 执行结果实时返回给聊天窗口

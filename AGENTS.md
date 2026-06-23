@@ -57,6 +57,7 @@ npx @cobusgreyling/loop-audit . --suggest
 - Kill switch: `LOOP-STATE.md` 中 `paused: true` 或 `loop-pause-all` 标签
 
 ## 测试命令
+## 测试命令
 
 ```bash
 npm test           # 全量测试
@@ -64,3 +65,61 @@ npm run test:unit  # 单元测试
 npm run test:integration  # 集成测试
 npm run test:regression   # 回归测试
 ```
+
+
+## 🚀 Loop Orchestrator 命令系统
+
+
+
+---
+
+## 🚀 Loop Orchestrator 命令系统
+
+### 重要：当你在聊天中看到以下 `/loop` 开头的命令时，**必须**按照本规范执行。
+
+### 命令列表
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/loop status` | 查看当前 Loop 状态 | `/loop status` |
+| `/loop start "需求描述"` | 从 PRD 阶段开始完整 Loop | `/loop start "实现一个定时任务调度管理服务..."` |
+| `/loop once` | 单次触发当前阶段 | `/loop once` |
+| `/loop phase <阶段名>` | 手动触发指定阶段 | `/loop phase design` |
+| `/loop watch` | 启动持续监听模式 | `/loop watch` |
+| `/loop pause` | 暂停 Loop | `/loop pause` |
+| `/loop resume` | 恢复 Loop | `/loop resume` |
+| `/loop help` | 显示帮助信息 | `/loop help` |
+
+### 执行规则（**严格遵守**）
+
+1. **识别命令**：用户输入以 `/loop` 开头时，识别为 Loop 命令，**不要**当作普通聊天处理
+2. **解析参数**：提取子命令和参数
+3. **工作目录**：所有命令都在项目根目录执行
+4. **输出格式**：实时显示脚本执行输出
+5. **完成后**：自动调用 `/loop status` 显示最新状态
+
+---
+
+### 各命令实现方式
+
+| 命令 | 执行脚本 |
+|------|----------|
+| `/loop status` | `./scripts/loop-cli.sh status` |
+| `/loop start "需求"` | `./scripts/loop-cli.sh start '需求'` |
+| `/loop once` | `./scripts/loop-cli.sh once` |
+| `/loop phase <名>` | `./scripts/loop-cli.sh phase <名>` |
+| `/loop watch` | `./scripts/loop-cli.sh watch` |
+| `/loop pause` | `./scripts/loop-cli.sh pause` |
+| `/loop resume` | `./scripts/loop-cli.sh resume` |
+| `/loop help` | `./scripts/loop-cli.sh help` |
+
+---
+
+### 通用执行规范
+
+1. **所有命令执行前**：先 `cd` 到项目根目录
+2. **超时设置**：
+   - 单次执行: `yield_time_ms: 60000` (60秒)
+   - watch 模式: `yield_time_ms: 30000` (30秒)
+3. **错误处理**：清晰显示错误信息，给出原因和建议
+4. **执行后**：自动调用 `/loop status` 显示最新状态
