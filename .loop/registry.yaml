@@ -93,19 +93,127 @@ loops:
 
 # 专业 Agent 目录（领域专家角色）
 agents:
-  - id: frontend-developer
-    name: 前端开发专家
-    department: engineering
-    dispatch_tag: frontend
-    phases: [code]
-    file: .loop/agents/engineering/frontend-developer.md
+  # ── Product 部门 ──
+  - id: product-manager
+    name: 产品经理
+    department: product
+    dispatch_tag: product
+    phases: [prd]
+    file: .loop/agents/product/product-manager.md
 
+  - id: feedback-synthesizer
+    name: 用户反馈综合分析师
+    department: product
+    dispatch_tag: feedback
+    phases: [prd]
+    file: .loop/agents/product/feedback-synthesizer.md
+
+  - id: sprint-prioritizer
+    name: Sprint 优先级规划师
+    department: product
+    dispatch_tag: sprint
+    phases: [prd]
+    file: .loop/agents/product/sprint-prioritizer.md
+
+  - id: trend-researcher
+    name: 趋势研究员
+    department: product
+    dispatch_tag: trend
+    phases: [prd]
+    file: .loop/agents/product/trend-researcher.md
+
+  - id: behavioral-nudge-engine
+    name: 行为助推引擎
+    department: product
+    dispatch_tag: nudge
+    phases: [prd]
+    file: .loop/agents/product/behavioral-nudge-engine.md
+
+  - id: technical-writer
+    name: 技术文档工程师
+    department: product
+    dispatch_tag: docs
+    phases: [arch, regression]
+    file: .loop/agents/product/technical-writer.md
+
+  # ── Design 部门 ──
+  - id: ui-designer
+    name: UI 设计师
+    department: design
+    dispatch_tag: ui
+    phases: [design]
+    file: .loop/agents/design/ui-designer.md
+
+  - id: interaction-designer
+    name: 交互设计师
+    department: design
+    dispatch_tag: interaction
+    phases: [design]
+    file: .loop/agents/design/interaction-designer.md
+
+  - id: ux-researcher
+    name: UX 研究员
+    department: design
+    dispatch_tag: ux-research
+    phases: [design]
+    file: .loop/agents/design/ux-researcher.md
+
+  - id: ux-architect
+    name: UX 架构师
+    department: design
+    dispatch_tag: ux-arch
+    phases: [design]
+    file: .loop/agents/design/ux-architect.md
+
+  - id: brand-guardian
+    name: 品牌守护者
+    department: design
+    dispatch_tag: brand
+    phases: [design]
+    file: .loop/agents/design/brand-guardian.md
+
+  # ── Engineering 部门 ──
   - id: backend-architect
     name: 后端架构师
     department: engineering
     dispatch_tag: backend
     phases: [arch, code]
     file: .loop/agents/engineering/backend-architect.md
+
+  - id: software-architect
+    name: 软件架构师
+    department: engineering
+    dispatch_tag: architect
+    phases: [arch]
+    file: .loop/agents/engineering/software-architect.md
+
+  - id: ai-engineer
+    name: AI 工程师
+    department: engineering
+    dispatch_tag: ai
+    phases: [arch, code]
+    file: .loop/agents/engineering/ai-engineer.md
+
+  - id: data-engineer
+    name: 数据工程师
+    department: engineering
+    dispatch_tag: data
+    phases: [arch, code]
+    file: .loop/agents/engineering/data-engineer.md
+
+  - id: security-architect
+    name: 安全架构师
+    department: engineering
+    dispatch_tag: sec-arch
+    phases: [arch, code]
+    file: .loop/agents/engineering/security-architect.md
+
+  - id: frontend-developer
+    name: 前端开发专家
+    department: engineering
+    dispatch_tag: frontend
+    phases: [code]
+    file: .loop/agents/engineering/frontend-developer.md
 
   - id: security-engineer
     name: 安全工程师
@@ -135,66 +243,209 @@ agents:
     phases: [arch, code]
     file: .loop/agents/engineering/database-optimizer.md
 
-  - id: ui-designer
-    name: UI 设计师
-    department: design
-    dispatch_tag: ui
-    phases: [design]
-    file: .loop/agents/design/ui-designer.md
+  - id: senior-developer
+    name: 高级全栈开发
+    department: engineering
+    dispatch_tag: senior
+    phases: [code]
+    file: .loop/agents/engineering/senior-developer.md
 
-  - id: interaction-designer
-    name: 交互设计师
-    department: design
-    dispatch_tag: interaction
-    phases: [design]
-    file: .loop/agents/design/interaction-designer.md
+  - id: minimal-change-engineer
+    name: 最小变更工程师
+    department: engineering
+    dispatch_tag: minimal
+    phases: [code]
+    file: .loop/agents/engineering/minimal-change-engineer.md
 
-  - id: product-manager
-    name: 产品经理
-    department: product
-    dispatch_tag: product
-    phases: [prd]
-    file: .loop/agents/product/product-manager.md
+  - id: rapid-prototyper
+    name: 快速原型师
+    department: engineering
+    dispatch_tag: proto
+    phases: [code]
+    file: .loop/agents/engineering/rapid-prototyper.md
 
-  - id: technical-writer
-    name: 技术文档工程师
-    department: product
-    dispatch_tag: docs
-    phases: [arch, regression]
-    file: .loop/agents/product/technical-writer.md
+  - id: mobile-app-builder
+    name: 移动应用开发专家
+    department: engineering
+    dispatch_tag: mobile
+    phases: [code]
+    file: .loop/agents/engineering/mobile-app-builder.md
+
+  - id: prompt-engineer
+    name: 提示词工程师
+    department: engineering
+    dispatch_tag: prompt
+    phases: [code]
+    file: .loop/agents/engineering/prompt-engineer.md
+
+  - id: codebase-onboarding-engineer
+    name: 代码库上手工程师
+    department: engineering
+    dispatch_tag: onboard
+    phases: [code]
+    file: .loop/agents/engineering/codebase-onboarding-engineer.md
+
+  - id: sre
+    name: SRE 站点可靠性工程师
+    department: engineering
+    dispatch_tag: sre
+    phases: [regression]
+    file: .loop/agents/engineering/sre.md
+
+  - id: incident-response-commander
+    name: 事件响应指挥官
+    department: engineering
+    dispatch_tag: incident
+    phases: [regression]
+    file: .loop/agents/engineering/incident-response-commander.md
+
+  # ── Testing 部门 ──
+  - id: api-tester
+    name: API 测试专家
+    department: testing
+    dispatch_tag: api-test
+    phases: [test]
+    file: .loop/agents/testing/api-tester.md
+
+  - id: accessibility-auditor
+    name: 可访问性审计师
+    department: testing
+    dispatch_tag: a11y
+    phases: [test]
+    file: .loop/agents/testing/accessibility-auditor.md
+
+  - id: performance-benchmarker
+    name: 性能基准测试师
+    department: testing
+    dispatch_tag: perf
+    phases: [test]
+    file: .loop/agents/testing/performance-benchmarker.md
+
+  - id: reality-checker
+    name: 现实检验师
+    department: testing
+    dispatch_tag: reality
+    phases: [test]
+    file: .loop/agents/testing/reality-checker.md
+
+  - id: evidence-collector
+    name: 证据收集师
+    department: testing
+    dispatch_tag: evidence
+    phases: [test]
+    file: .loop/agents/testing/evidence-collector.md
 
 # 任务标签 → 专业 Agent 派发映射
 dispatch:
-  - tag: frontend
-    agent: .loop/agents/engineering/frontend-developer.md
-    phases: [code]
-  - tag: backend
-    agent: .loop/agents/engineering/backend-architect.md
-    phases: [arch, code]
-  - tag: security
-    agent: .loop/agents/engineering/security-engineer.md
-    phases: [code]
-  - tag: review
-    agent: .loop/agents/engineering/code-reviewer.md
-    phases: [code]
-  - tag: devops
-    agent: .loop/agents/engineering/devops-automator.md
-    phases: [arch, code]
-  - tag: database
-    agent: .loop/agents/engineering/database-optimizer.md
-    phases: [arch, code]
+  # Product
+  - tag: product
+    agent: .loop/agents/product/product-manager.md
+    phases: [prd]
+  - tag: feedback
+    agent: .loop/agents/product/feedback-synthesizer.md
+    phases: [prd]
+  - tag: sprint
+    agent: .loop/agents/product/sprint-prioritizer.md
+    phases: [prd]
+  - tag: trend
+    agent: .loop/agents/product/trend-researcher.md
+    phases: [prd]
+  - tag: nudge
+    agent: .loop/agents/product/behavioral-nudge-engine.md
+    phases: [prd]
+  - tag: docs
+    agent: .loop/agents/product/technical-writer.md
+    phases: [arch, regression]
+  # Design
   - tag: ui
     agent: .loop/agents/design/ui-designer.md
     phases: [design]
   - tag: interaction
     agent: .loop/agents/design/interaction-designer.md
     phases: [design]
-  - tag: product
-    agent: .loop/agents/product/product-manager.md
-    phases: [prd]
-  - tag: docs
-    agent: .loop/agents/product/technical-writer.md
-    phases: [arch, regression]
+  - tag: ux-research
+    agent: .loop/agents/design/ux-researcher.md
+    phases: [design]
+  - tag: ux-arch
+    agent: .loop/agents/design/ux-architect.md
+    phases: [design]
+  - tag: brand
+    agent: .loop/agents/design/brand-guardian.md
+    phases: [design]
+  # Engineering — arch
+  - tag: backend
+    agent: .loop/agents/engineering/backend-architect.md
+    phases: [arch, code]
+  - tag: architect
+    agent: .loop/agents/engineering/software-architect.md
+    phases: [arch]
+  - tag: ai
+    agent: .loop/agents/engineering/ai-engineer.md
+    phases: [arch, code]
+  - tag: data
+    agent: .loop/agents/engineering/data-engineer.md
+    phases: [arch, code]
+  - tag: sec-arch
+    agent: .loop/agents/engineering/security-architect.md
+    phases: [arch, code]
+  - tag: devops
+    agent: .loop/agents/engineering/devops-automator.md
+    phases: [arch, code]
+  - tag: database
+    agent: .loop/agents/engineering/database-optimizer.md
+    phases: [arch, code]
+  # Engineering — code
+  - tag: frontend
+    agent: .loop/agents/engineering/frontend-developer.md
+    phases: [code]
+  - tag: security
+    agent: .loop/agents/engineering/security-engineer.md
+    phases: [code]
+  - tag: review
+    agent: .loop/agents/engineering/code-reviewer.md
+    phases: [code]
+  - tag: senior
+    agent: .loop/agents/engineering/senior-developer.md
+    phases: [code]
+  - tag: minimal
+    agent: .loop/agents/engineering/minimal-change-engineer.md
+    phases: [code]
+  - tag: proto
+    agent: .loop/agents/engineering/rapid-prototyper.md
+    phases: [code]
+  - tag: mobile
+    agent: .loop/agents/engineering/mobile-app-builder.md
+    phases: [code]
+  - tag: prompt
+    agent: .loop/agents/engineering/prompt-engineer.md
+    phases: [code]
+  - tag: onboard
+    agent: .loop/agents/engineering/codebase-onboarding-engineer.md
+    phases: [code]
+  # Engineering — regression
+  - tag: sre
+    agent: .loop/agents/engineering/sre.md
+    phases: [regression]
+  - tag: incident
+    agent: .loop/agents/engineering/incident-response-commander.md
+    phases: [regression]
+  # Testing
+  - tag: api-test
+    agent: .loop/agents/testing/api-tester.md
+    phases: [test]
+  - tag: a11y
+    agent: .loop/agents/testing/accessibility-auditor.md
+    phases: [test]
+  - tag: perf
+    agent: .loop/agents/testing/performance-benchmarker.md
+    phases: [test]
+  - tag: reality
+    agent: .loop/agents/testing/reality-checker.md
+    phases: [test]
+  - tag: evidence
+    agent: .loop/agents/testing/evidence-collector.md
+    phases: [test]
+  # Default
   - tag: default
     agent: null
     description: 无标签时使用阶段 agent 自身人格

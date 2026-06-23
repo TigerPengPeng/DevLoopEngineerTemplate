@@ -42,22 +42,20 @@ npx @cobusgreyling/loop-audit . --suggest
 系统采用两层 agent 架构：
 
 - **阶段 agent**（`.loop/skills/`）：9 个阶段编排技能，负责阶段内状态管理、worktree 隔离、handoff
-- **专业 agent**（`.loop/agents/`）：10 个领域专家角色，由阶段 agent 通过任务标签派发加载
+- **专业 agent**（`.loop/agents/`）：34 个领域专家角色（4 个部门），由阶段 agent 通过任务标签派发加载
 
 ### 专业 Agent 目录
 
-| 部门 | Agent | dispatch_tag | 适用阶段 |
-|------|-------|-------------|---------|
-| Engineering | 前端开发专家 | `frontend` | code |
-| Engineering | 后端架构师 | `backend` | arch, code |
-| Engineering | 安全工程师 | `security` | code |
-| Engineering | 代码审查员 | `review` | code |
-| Engineering | DevOps 自动化工程师 | `devops` | arch, code |
-| Engineering | 数据库优化专家 | `database` | arch, code |
-| Design | UI 设计师 | `ui` | design |
-| Design | 交互设计师 | `interaction` | design |
-| Product | 产品经理 | `product` | prd |
-| Product | 技术文档工程师 | `docs` | arch, regression |
+完整目录见 `.loop/agents/_index.md`，共 34 个 agent 分布在 4 个部门：
+
+| 部门 | 数量 | 覆盖阶段 | 代表角色 |
+|------|------|---------|---------|
+| Engineering | 18 | arch, code, regression | 后端架构师、前端开发、安全架构师、SRE、事件响应指挥官 |
+| Product | 6 | prd, arch, regression | 产品经理、趋势研究员、用户反馈分析师、行为助推引擎 |
+| Design | 5 | design | UI 设计师、交互设计师、UX 研究员、UX 架构师、品牌守护者 |
+| Testing | 5 | test | API 测试、可访问性审计、性能基准、现实检验、证据收集 |
+
+> 角色来源：[agency-agents](https://github.com/msitarzewski/agency-agents) 项目，经中文适配和 Loop 安全约束整合。
 
 ### 任务标签派发
 
@@ -85,10 +83,11 @@ Arch Loop 在拆分 TODO.md 任务时自动标注 `[type: xxx]` 标签。Code Lo
 │   ├── DESIGN.md          # 视觉交互规范
 │   └── ARCHITECTURE.md    # 技术架构文档
 ├── .loop/
-│   ├── agents/            # 专业 agent 角色目录
-│   │   ├── engineering/   # 6 个工程类 agent
-│   │   ├── design/        # 2 个设计类 agent
-│   │   ├── product/       # 2 个产品类 agent
+│   ├── agents/            # 专业 agent 角色目录（34 个）
+│   │   ├── engineering/   # 18 个工程类 agent
+│   │   ├── design/        # 5 个设计类 agent
+│   │   ├── product/       # 6 个产品类 agent
+│   │   ├── testing/       # 5 个测试类 agent
 │   │   └── _index.md      # 角色目录索引
 │   ├── phases/            # 各阶段状态文件
 │   ├── skills/            # 9 个阶段编排技能 SKILL.md
