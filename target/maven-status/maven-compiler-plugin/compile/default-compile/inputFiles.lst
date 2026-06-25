@@ -13,6 +13,7 @@
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/market/MarketSessionService.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/market/QuoteSubscriptionService.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/market/SnapshotPollingService.java
+/Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/market/StockAnalysisService.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/Direction.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/MAEvent.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/PriceAlert.java
@@ -26,3 +27,4 @@
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/startup/ApplicationStartupRunner.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/startup/QuoteProcessor.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/web/StatusController.java
+/Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/web/StockDetailController.java

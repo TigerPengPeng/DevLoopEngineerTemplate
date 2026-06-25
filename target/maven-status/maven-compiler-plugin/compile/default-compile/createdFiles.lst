@@ -5,6 +5,8 @@ com/autotrading/model/Direction.class
 com/autotrading/model/StockInfo.class
 com/autotrading/model/MAEvent.class
 com/autotrading/futu/FutuQuoteHandler.class
+com/autotrading/market/StockAnalysisService.class
+com/autotrading/web/StockDetailController.class
 com/autotrading/config/FutuProperties$Reconnect.class
 com/autotrading/config/NotificationProperties.class
 com/autotrading/startup/QuoteProcessor$PriceSnapshot.class
@@ -14,6 +16,7 @@ com/autotrading/web/StatusController.class
 com/autotrading/futu/AsyncRequestBridge$FutuRequestException.class
 com/autotrading/monitor/AlertCoordinator$RecentAlert.class
 com/autotrading/config/FutuProperties$Monitor.class
+com/autotrading/market/KLineService$KLineData.class
 com/autotrading/futu/AsyncRequestBridge$FutuConnectionException.class
 com/autotrading/market/SnapshotPollingService.class
 com/autotrading/account/StockGroupService.class

@@ -330,7 +330,8 @@ function renderStocks(stocks) {
     const pct = hasPrice ? s.changePercent : null;
     const pctClass = pct > 0 ? 'up-text' : pct < 0 ? 'down-text' : '';
     const pctStr = hasPrice ? fmtPct(pct) : '--';
-    return `<tr>
+    const mk = s.key ? s.key.split('.')[0] : '';
+    return `<tr style="cursor:pointer" onclick="window.location.href='/stock.html?market=${mk}&code=${encodeURIComponent(s.code)}'">
       <td>${s.code}</td>
       <td>${s.name || '--'}</td>
       <td><span class="pill dim">${s.market}</span></td>

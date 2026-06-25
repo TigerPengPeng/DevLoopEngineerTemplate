@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Detail</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #e6edf3; --text-dim: #8b949e;
+    --green: #3fb950; --red: #f85149; --blue: #58a6ff;
+    --yellow: #d29922; --purple: #bc8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text);
+    font-family: -apple-system, system-ui, "Segoe UI", sans-serif; font-size: 14px; padding: 20px; }
+  .header { display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .back-btn { display: flex; align-items: center; gap: 6px; text-decoration: none;
+    color: var(--blue); font-size: 13px; cursor: pointer; padding: 4px 0; }
+  .back-btn:hover { text-decoration: underline; }
+  .stock-title { font-size: 20px; font-weight: 700; }
+  .stock-code { color: var(--text-dim); font-size: 14px; margin-left: 8px;
+    font-family: "SF Mono","Cascadia Code",monospace; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; }
+  .pill.green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .pill.red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .pill.dim { background: rgba(139,148,158,0.15); color: var(--text-dim); }
+  .grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+  .chart-section { background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; }
+  .chart-header { padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; }
+  .chart-title { font-size: 13px; font-weight: 600; }
+  .ma-legend { display: flex; gap: 12px; font-size: 11px;
+    font-family: "SF Mono","Cascadia Code",monospace; }
+  .ma-legend span { cursor: pointer; }
+  #chart { width: 100%; height: 420px; }
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; }
+  .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; }
+  .panel-body { padding: 12px 14px; }
+  .strategy-select { width: 100%; padding: 6px 10px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+    font-size: 13px; cursor: pointer; }
+  .strategy-select:focus { outline: none; border-color: var(--blue); }
+  .signal-box { margin-top: 12px; padding: 10px 12px; border-radius: 6px;
+    font-size: 13px; line-height: 1.6; }
+  .signal-box.bullish { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); }
+  .signal-box.bearish { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); }
+  .signal-box.neutral { background: rgba(139,148,158,0.1); border: 1px solid rgba(139,148,158,0.3); }
+  .signal-type { font-weight: 700; margin-bottom: 4px; }
+  .indicator-row { display: flex; justify-content: space-between;
+    padding: 4px 0; font-size: 13px; }
+  .indicator-row .label { color: var(--text-dim); }
+  .indicator-row .value { font-family: "SF Mono","Cascadia Code",monospace; font-weight: 600; }
+  .breakout-item { display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid rgba(48,54,61,0.5); font-size: 13px; }
+  .breakout-item:last-child { border-bottom: none; }
+  .breakout-icon { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .breakout-icon.red { background: var(--red); box-shadow: 0 0 4px var(--red); }
+  .breakout-icon.green { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .loading { text-align: center; padding: 40px; color: var(--text-dim); }
+  .ma-table { width: 100%; font-size: 13px; }
+  .ma-table td { padding: 5px 0; }
+  .ma-table .num { text-align: right; font-family: "SF Mono","Cascadia Code",monospace; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <a class="back-btn" href="/">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back
+    </a>
+    <span class="stock-title" id="stock-name">Loading...</span>
+    <span class="stock-code" id="stock-code"></span>
+    <span class="pill dim" id="stock-session"></span>
+  </div>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="chart-section">
+      <div class="chart-header">
+        <span class="chart-title">120-Day K-Line (Forward Adjusted)</span>
+        <div class="ma-legend">
+          <span style="color:#f5a623">MA5</span>
+          <span style="color:#58a6ff">MA13</span>
+          <span style="color:#bc8cff">MA30</span>
+          <span style="color:#3fb950">MA55</span>
+        </div>
+      </div>
+      <div id="chart"></div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div class="panel">
+        <div class="panel-header">MA Breakout Alerts</div>
+        <div id="breakout-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-header">Analysis Strategy</div>
+      <div class="panel-body">
+        <select class="strategy-select" id="strategy-select" onchange="runAnalysis()">
+          <option value="ma_crossover">MA均线交叉</option>
+          <option value="macd">MACD</option>
+          <option value="rsi">RSI 相对强弱</option>
+          <option value="bollinger">布林带 Bollinger</option>
+          <option value="kdj">KDJ 随机指标</option>
+          <option value="volume">量价分析</option>
+        </select>
+        <div id="analysis-result"><div class="loading">Select and analyze...</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">MA Status</div>
+      <div class="panel-body">
+        <table class="ma-table" id="ma-table"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const market = parseInt(params.get('market') || '0');
+const code = params.get('code') || '';
+var chart = null;
+
+async function init() {
+  document.getElementById('stock-code').textContent = code;
+
+  try {
+    const resp = await fetch('/api/stock/' + market + '/' + code + '/kline');
+    const data = await resp.json();
+
+    document.getElementById('stock-name').textContent = code;
+    document.getElementById('stock-session').textContent = data.session || '';
+    document.getElementById('stock-session').className =
+      data.session === '盘中' ? 'pill green' :
+      data.session === '休市' ? 'pill dim' : 'pill dim';
+
+    if (data.count === 0) {
+      document.getElementById('chart').innerHTML = '<div class="loading">No K-line data available</div>';
+      return;
+    }
+
+    renderChart(data);
+    renderBreakouts(data);
+    runAnalysis();
+  } catch(e) {
+    document.getElementById('chart').innerHTML = '<div class="loading">Failed to load: ' + e.message + '</div>';
+  }
+}
+
+function renderChart(data) {
+  var el = document.getElementById('chart');
+  el.innerHTML = '';
+
+  chart = LightweightCharts.createChart(el, {
+    width: el.clientWidth, height: 420,
+    layout: { background: { type: 'solid', color: '#161b22' }, textColor: '#8b949e' },
+    grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#30363d' },
+    timeScale: { borderColor: '#30363d', timeVisible: false }
+  });
+
+  var candleSeries = chart.addCandlestickSeries({
+    upColor: '#3fb950', downColor: '#f85149',
+    borderUpColor: '#3fb950', borderDownColor: '#f85149',
+    wickUpColor: '#3fb950', wickDownColor: '#f85149'
+  });
+
+  var candleData = data.klines.map(function(k) {
+    return { time: k.time.split(" ")[0], open: k.open, high: k.high, low: k.low, close: k.close };
+  });
+  candleSeries.setData(candleData);
+
+  // MA overlays
+  var maColors = { ma5: '#f5a623', ma13: '#58a6ff', ma30: '#bc8cff', ma55: '#3fb950' };
+  var periods = [5, 13, 30, 55];
+  periods.forEach(function(p) {
+    var key = 'ma' + p;
+    if (!data[key]) return;
+    var maSeries = chart.addLineSeries({
+      color: maColors[key], lineWidth: 1.5, priceLineVisible: false,
+      lastValueVisible: false, crosshairMarkerVisible: false
+    });
+    var maData = data[key].map(function(pt) {
+      return { time: data.klines[pt.index].time.split(" ")[0], value: pt.value };
+    });
+    maSeries.setData(maData);
+  });
+
+  // Volume
+  var volSeries = chart.addHistogramSeries({
+    color: '#30363d', priceFormat: { type: 'volume' },
+    priceScaleId: '', scaleMargins: { top: 0.8, bottom: 0 }
+  });
+  var volData = data.klines.map(function(k) {
+    return { time: k.time.split(" ")[0], value: k.volume,
+      color: k.close >= k.open ? 'rgba(63,185,80,0.4)' : 'rgba(248,81,73,0.4)' };
+  });
+  volSeries.setData(volData);
+
+  chart.timeScale().fitContent();
+
+  window.addEventListener('resize', function() {
+    if (chart) chart.applyOptions({ width: el.clientWidth });
+  });
+}
+
+function renderBreakouts(data) {
+  var closes = data.klines.map(function(k) { return k.close; });
+  var lastPrice = closes[closes.length - 1];
+  var html = '';
+  var periods = [5, 13, 30, 55];
+  var allAbove = true;
+
+  // MA table
+  var tableHtml = '';
+  periods.forEach(function(p) {
+    var maKey = 'ma' + p;
+    if (!data[maKey] || data[maKey].length === 0) return;
+    var maVal = data[maKey][data[maKey].length - 1].value;
+    var above = lastPrice > maVal;
+    if (!above) allAbove = false;
+    var distPct = ((lastPrice - maVal) / maVal * 100).toFixed(2);
+    var color = above ? '#3fb950' : '#f85149';
+    tableHtml += '<tr><td>MA' + p + '</td><td class="num" style="color:' + color + '">' +
+      maVal.toFixed(2) + '</td><td class="num" style="color:' + color + '">' +
+      (above ? '+' : '') + distPct + '%</td></tr>';
+  });
+  document.getElementById('ma-table').innerHTML = tableHtml +
+    '<tr><td>Current</td><td class="num">' + lastPrice.toFixed(2) + '</td><td></td></tr>';
+
+  // Breakout alerts
+  var breakouts = [];
+  periods.forEach(function(p) {
+    var maKey = 'ma' + p;
+    if (!data[maKey] || data[maKey].length === 0) return;
+    var maVal = data[maKey][data[maKey].length - 1].value;
+    if (lastPrice < maVal) {
+      var distPct = ((lastPrice - maVal) / maVal * 100).toFixed(2);
+      breakouts.push({ ma: 'MA' + p, maVal: maVal, distPct: distPct });
+    }
+  });
+
+  if (breakouts.length === 0) {
+    document.getElementById('breakout-list').innerHTML =
+      '<div class="breakout-item"><span class="breakout-icon green"></span>' +
+      '<span>股价站上所有均线，多头排列</span></div>';
+  } else {
+    html = breakouts.map(function(b) {
+      return '<div class="breakout-item"><span class="breakout-icon red"></span>' +
+        '<span><b>股价跌破 ' + b.ma + '</b> (MA值 ' + b.maVal.toFixed(2) +
+        ', 偏离 ' + b.distPct + '%)</span></div>';
+    }).join('');
+    document.getElementById('breakout-list').innerHTML = html;
+  }
+}
+
+async function runAnalysis() {
+  var strategy = document.getElementById('strategy-select').value;
+  var el = document.getElementById('analysis-result');
+  el.innerHTML = '<div class="loading">Analyzing...</div>';
+
+  try {
+    var resp = await fetch('/api/stock/' + market + '/' + code + '/analysis?strategy=' + strategy);
+    var data = await resp.json();
+
+    if (data.error) {
+      el.innerHTML = '<div class="signal-box neutral"><div class="signal-type">Error</div>' + data.error + '</div>';
+      return;
+    }
+
+    var type = data.signalType || 'neutral';
+    var html = '<div class="signal-box ' + type + '"><div class="signal-type">' +
+      (type === 'bullish' ? 'Bullish' : type === 'bearish' ? 'Bearish' : 'Neutral') +
+      '</div>' + data.signal + '</div>';
+
+    // Indicator details (skip generic keys)
+    var skipKeys = new Set(['strategy','signal','signalType','signal','error','breakouts','currentPrice','signalType']);
+    var detailHtml = '<div style="margin-top:12px">';
+    for (var key in data) {
+      if (skipKeys.has(key)) continue;
+      var val = data[key];
+      if (typeof val === 'object') continue;
+      if (typeof val === 'number') val = Number(val).toFixed(2);
+      detailHtml += '<div class="indicator-row"><span class="label">' + key +
+        '</span><span class="value">' + val + '</span></div>';
+    }
+    detailHtml += '</div>';
+
+    // MA lines for ma_crossover
+    if (data.maLines) {
+      detailHtml += '<div style="margin-top:8px">';
+      data.maLines.forEach(function(ma) {
+        var color = ma.above ? '#3fb950' : '#f85149';
+        detailHtml += '<div class="indicator-row"><span class="label">MA' + ma.period +
+          '</span><span class="value" style="color:' + color + '">' +
+          ma.value + ' (' + (ma.above ? 'above' : 'below') + ' ' +
+          (ma.distancePercent > 0 ? '+' : '') + ma.distancePercent + '%)</span></div>';
+      });
+      detailHtml += '</div>';
+    }
+
+    el.innerHTML = html + detailHtml;
+  } catch(e) {
+    el.innerHTML = '<div class="signal-box neutral"><div class="signal-type">Error</div>' + e.message + '</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
