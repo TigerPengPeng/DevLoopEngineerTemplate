@@ -1,0 +1,4 @@
+com/autotrading/monitor/AlertCoordinatorTest.class
+com/autotrading/market/MarketSessionServiceTest.class
+com/autotrading/indicator/MACalculatorTest.class
+com/autotrading/indicator/CrossoverDetectorTest.class

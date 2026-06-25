@@ -3,7 +3,7 @@
 > 阶段状态文件。每次运行更新。
 
 Last run: —
-Phase: idle
+Phase: done
 
 ## Current
 - (无)

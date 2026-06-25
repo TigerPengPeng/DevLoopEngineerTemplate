@@ -1,0 +1,36 @@
+services:
+  futu-stock-monitor:
+    build: .
+    container_name: futu-stock-monitor
+    restart: unless-stopped
+    environment:
+      # Futu OpenD connection
+      # IMPORTANT: OpenD must listen on 0.0.0.0 (not 127.0.0.1)
+      # for the container to reach it via host.docker.internal
+      OPEND_IP: ${OPEND_IP:-host.docker.internal}
+      OPEND_PORT: ${OPEND_PORT:-11111}
+      OPEND_ENCRYPT: ${OPEND_ENCRYPT:-false}
+      FUTU_GROUP_NAME: ${FUTU_GROUP_NAME:-}
+      # Monitoring
+      PRICE_CHANGE_THRESHOLD: ${PRICE_CHANGE_THRESHOLD:-2.0}
+      ALERT_COOLDOWN_MINUTES: ${ALERT_COOLDOWN_MINUTES:-15}
+      # Email
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_TO: ${MAIL_TO:-}
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
+      # Reconnect
+      RECONNECT_INITIAL_DELAY_MS: ${RECONNECT_INITIAL_DELAY_MS:-5000}
+      RECONNECT_MAX_DELAY_MS: ${RECONNECT_MAX_DELAY_MS:-60000}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

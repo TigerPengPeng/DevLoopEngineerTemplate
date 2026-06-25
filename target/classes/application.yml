@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: futu-stock-monitor
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+
+futu:
+  opend:
+    ip: ${OPEND_IP:127.0.0.1}
+    port: ${OPEND_PORT:11111}
+    encrypt: ${OPEND_ENCRYPT:false}
+    rsa-key: ${OPEND_RSA_KEY:}
+  filter:
+    group-name: ${FUTU_GROUP_NAME:}
+  monitor:
+    ma-periods: [5, 13, 30, 55]
+    price-change-threshold: ${PRICE_CHANGE_THRESHOLD:2.0}
+    alert-cooldown-minutes: ${ALERT_COOLDOWN_MINUTES:15}
+    kline-refresh-interval: ${KLINE_REFRESH_INTERVAL:60000}
+    market-state-poll-interval: ${MARKET_STATE_POLL_INTERVAL:30000}
+    snapshot-poll-interval: ${SNAPSHOT_POLL_INTERVAL:10000}
+  reconnect:
+    initial-delay-ms: ${RECONNECT_INITIAL_DELAY_MS:5000}
+    max-delay-ms: ${RECONNECT_MAX_DELAY_MS:60000}
+    multiplier: ${RECONNECT_MULTIPLIER:2.0}
+
+notification:
+  mail:
+    to: ${MAIL_TO:}
+    enabled: ${MAIL_ENABLED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+  # Mail is an async notification channel; an unreachable SMTP host must not
+  # drag the aggregate health DOWN (the auto-configured MailHealthIndicator does
+  # a real SMTP probe that times out under Docker and flips health to 503).
+  health:
+    mail:
+      enabled: false
+
+logging:
+  level:
+    com.autotrading: INFO
+    com.futu.openapi: WARN

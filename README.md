@@ -1,290 +1,164 @@
-# Loop Engineering 项目模板
+# Futu 股票监听系统
 
-> 基于 [loop-engineering](https://github.com/cobusgreyling/loop-engineering) 的全生命周期自动 prompt 代理闭环系统模板。
-> 覆盖 PRD → UI 设计 → 系统设计 → 编码 → 测试 → 功能回归验证的完整需求周期。
-> 结合 [agency-agent](https://github.com/jnMetaCode/agency-agents-zh) 角色目录模式，支持任务标签派发专业 agent。
+> 基于 Java + Spring Boot 3 的 headless 股票监听服务，对接 Futu OpenD，实时监控美股和 A 股的价格波动与 MA 均线突破，事件触发时邮件告警。
 
-## 快速开始
+## 项目简介
 
-```bash
-# 1. 复制此模板到你的项目
-cp -r /path/to/template /path/to/your-project
-cd /path/to/your-project
-
-# 2. 初始化 git
-git init
-git add .
-git commit -m "init: loop engineering template"
-
-# 3. 安装依赖
-npm install
-
-# 4. 从 L1 开始：输入需求，触发 PRD Loop
-# 编辑 LOOP-STATE.md 或通过 GitHub Issue 触发
-
-# 5. 审计就绪度
-npx @cobusgreyling/loop-audit . --suggest
-```
-
-## 闭环系统概览
-
-```
-① PRD Loop ──→ ② Design Loop ──→ ③ Arch Loop
-     ↑                                  │
-     │                                  ↓
-⑥ Regression ←── ⑤ Test Loop ←── ④ Code Loop
-     │
-     └──── 反馈信号（缺陷、偏差、新需求）──────┘
-```
-
-## 两层 Agent 体系
-
-系统采用两层 agent 架构：
-
-- **阶段 agent**（`.loop/skills/`）：9 个阶段编排技能，负责阶段内状态管理、worktree 隔离、handoff
-- **专业 agent**（`.loop/agents/`）：34 个领域专家角色（4 个部门），由阶段 agent 通过任务标签派发加载
-
-### 专业 Agent 目录
-
-完整目录见 `.loop/agents/_index.md`，共 34 个 agent 分布在 4 个部门：
-
-| 部门 | 数量 | 覆盖阶段 | 代表角色 |
-|------|------|---------|---------|
-| Engineering | 18 | arch, code, regression | 后端架构师、前端开发、安全架构师、SRE、事件响应指挥官 |
-| Product | 6 | prd, arch, regression | 产品经理、趋势研究员、用户反馈分析师、行为助推引擎 |
-| Design | 5 | design | UI 设计师、交互设计师、UX 研究员、UX 架构师、品牌守护者 |
-| Testing | 5 | test | API 测试、可访问性审计、性能基准、现实检验、证据收集 |
-
-> 角色来源：[agency-agents](https://github.com/msitarzewski/agency-agents) 项目，经中文适配和 Loop 安全约束整合。
-
-### 任务标签派发
-
-Arch Loop 在拆分 TODO.md 任务时自动标注 `[type: xxx]` 标签。Code Loop 读取标签后加载对应专业 agent 人格执行：
-
-```
-- [ ] [type: frontend] 实现用户登录页面
-- [ ] [type: backend] 实现用户认证 API
-- [ ] [type: database] 设计用户表结构
-```
-
-无标签任务使用阶段 agent 默认人格执行（向后兼容）。标签与 agent 映射在 `registry.yaml` 的 `dispatch` 段集中维护。
-
-## 目录结构
-
-```
-├── AGENTS.md              # 全局约定
-├── LOOP.md                # 闭环系统总纲
-├── LOOP-STATE.md          # 全局状态
-├── loop-budget.md         # token 预算
-├── loop-run-log.md        # 运行日志
-├── TODO.md                # 任务清单（含 [type:xxx] 标签）
-├── docs/
-│   ├── PRD.md             # 产品需求文档
-│   ├── DESIGN.md          # 视觉交互规范
-│   └── ARCHITECTURE.md    # 技术架构文档
-├── .loop/
-│   ├── agents/            # 专业 agent 角色目录（34 个）
-│   │   ├── engineering/   # 18 个工程类 agent
-│   │   ├── design/        # 5 个设计类 agent
-│   │   ├── product/       # 6 个产品类 agent
-│   │   ├── testing/       # 5 个测试类 agent
-│   │   └── _index.md      # 角色目录索引
-│   ├── phases/            # 各阶段状态文件
-│   ├── skills/            # 9 个阶段编排技能 SKILL.md
-│   ├── templates/         # 文档模板（含 AGENT.template.md）
-│   └── registry.yaml      # 机器可读注册表（loops + agents + dispatch）
-├── tests/
-│   ├── regression/        # 回归测试
-│   └── snapshots/         # 功能快照
-└── .github/workflows/     # 7 个 loop 触发工作流
-```
+- 对接 Futu OpenD，拉取账户股票分组
+- 订阅实时行情，计算 MA5/13/30/55 均线
+- 监控价格突破/跌破 MA 均线
+- 监控日内价格波动（可配置阈值，默认 ±2%）
+- 美股支持盘前、盘中、盘后、夜盘四个时段
+- A 股市场支持
+- 连接池断线自动重连，无内存泄露
+- 事件触发邮件通知，带冷却期防刷屏
+- Docker 一键部署
 
 ## 技术栈
 
-- Agent: Codex / Claude Code / Grok / Cursor
-- 调度: GitHub Actions / Automations
-- MCP 连接器: GitHub / Linear / Slack (可选)
-- 审计: @cobusgreyling/loop-audit
+- Java 17
+- Spring Boot 3.3.6 (非 Web, actuator 健康检查)
+- Maven 3.9.x
+- Futu OpenAPI SDK (`com.futunn.openapi:futu-api:9.3.5308`)
+- Spring Boot Mail (JavaMail)
+- Docker + docker-compose
 
-## 环境变量
+## 快速开始
 
-| 变量 | 说明 | 必填 |
-|------|------|------|
-| `GITHUB_TOKEN` | GitHub API 访问 | 是 |
-| `OPENAI_API_KEY` | Agent 模型调用 | 是 |
-| `SLACK_WEBHOOK` | 通知 webhook | 否 |
+### 前置要求
 
-## Orchestrator（自动调度器）
+- JDK 17+
+- Maven 3.9+
+- Futu OpenD 已运行（默认 127.0.0.1:11111）
+- SMTP 邮件服务（Gmail / 企业邮箱等）
 
-闭环系统通过 `scripts/loop-orchestrator.sh` 实现阶段间自动链式触发。编排器在触发阶段 agent 时自动注入 `.loop/agents/_index.md` 作为上下文，让阶段 agent 知道可用的专业 agent 目录。
-
-### 快速使用
-
-```bash
-# 查看当前系统状态（含 agent 目录概览）
-./scripts/loop-status.sh
-
-# 单次检查并触发下一阶段（如果当前阶段 idle 或上游已完成）
-./scripts/loop-orchestrator.sh --once
-
-# 持续监听模式（每 10 秒轮询，自动链式触发所有阶段）
-./scripts/loop-orchestrator.sh
-
-# 手动触发指定阶段
-./scripts/loop-orchestrator.sh --once --phase design
-
-# 启动全新迭代（从 PRD 开始）
-REQUIREMENT='你的产品需求描述' ./scripts/loop-orchestrator.sh --once --phase prd
-```
-
-# 通过 codex desktop 启动loop Engineer
-将以下 prompt 发送给一个 agent
-
-```
-你是一个 Loop Engineering 闭环系统中的 PRD Loop agent。
-
-1. 读取技能文件: .loop/skills/prd-author/SKILL.md
-2. 读取全局状态: LOOP-STATE.md
-3. 读取当前 PRD: docs/PRD.md
-
-需求输入:
-github 热门star 项目自动抓取和管理的系统
-
-4. 按 prd-author 技能职责，将需求结构化为 PRD 草案
-5. 更新 docs/PRD.md（状态标记为 draft）
-6. 更新 .loop/phases/prd-state.md（Phase: drafting）
-7. 完成后，按 loop-verifier 的 PRD 阶段验证清单自检
-8. 自检通过后，将 PRD.md 状态改为 draft-frozen
-9. 更新 LOOP-STATE.md（Current phase: design, Frozen Artifacts 添加 PRD.md）
-```
-
-### 工作原理
-
-```
-1. PRD Loop 完成 → LOOP-STATE.md Current phase 改为 design
-2. Orchestrator 检测到 design 阶段 idle → 自动触发 Design Loop
-3. Design Loop 完成 → Current phase 改为 arch
-4. Orchestrator 检测到 arch 阶段 idle → 自动触发 Arch Loop
-5. ... 依此类推直到 Regression Loop
-6. Regression 发现 drift → Current phase 回到 prd → 闭环
-```
-
-### Kill Switch
-
-在 `LOOP-STATE.md` 中设置 `paused: true` 暂停所有自动触发。
-
-
-## 成熟度升级
-
-```
-L0(文档) → L1(报告) → L2(辅助) → L3(无人值守)
-```
-每级稳定 2 周后再升级。永远不要为新项目跳过 L1。
-
-
----
-
-## 🚀 Orchestrator 使用指南（方案 3：Git 外包模式）
-
-### 核心架构
-
-本模板实现了 **方案 3：Git 外包模式**，这是最安全的自动化架构：
-
-| 职责 | Agent | Orchestrator |
-|------|-------|--------------|
-| 编写代码/文档 | ✅ | ❌ |
-| 执行 git add/commit | ❌ | ✅ |
-| 安全沙箱保护 | ✅ | — |
-| 自动确认提示 | ✅（通过 yes） | — |
-
-### 为什么这样设计？
-
-1. **安全**：保留 sandbox 保护，不使用 `--dangerously-bypass-approvals-and-sandbox`
-2. **可控**：所有 git 操作由 orchestrator 统一管理，可审计、可回滚
-3. **零人工确认**：用 `yes | codex exec` 自动回答安全提示
-4. **最小权限**：Agent 只拥有写代码的权限，不具备破坏性操作的能力
-
-### 使用方式
+### 本地开发
 
 ```bash
-# 1. 检查状态
-./scripts/loop-status.sh
+# 克隆项目
+git clone <repo-url>
+cd AutoTradingSystem
 
-# 2. 单次执行（推荐用于调试）
-./scripts/loop-orchestrator.sh --once
+# 配置环境变量（复制模板并编辑）
+cp .env.example .env
+# 编辑 .env 填入 SMTP 和 OpenD 配置
 
-# 3. Watch 模式（持续轮询）
-./scripts/loop-orchestrator.sh
+# 编译
+mvn compile
 
-# 4. 手动触发指定阶段
-./scripts/loop-orchestrator.sh --once --phase design
+# 运行测试
+mvn test
 
-# 5. 禁用自动提交（只写代码不 commit）
-./scripts/loop-orchestrator.sh --once --no-auto-commit
-
-# 6. 禁用自动确认（需要人工按 y）
-./scripts/loop-orchestrator.sh --once --no-auto-confirm
+# 启动服务
+mvn spring-boot:run
 ```
 
-### 环境变量
+### Docker 部署
+
+```bash
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env
+
+# 构建并启动
+docker compose up -d
+
+# 查看日志
+docker compose logs -f
+
+# 健康检查
+curl http://localhost:8080/actuator/health
+```
+
+## 环境变量说明
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `POLL_INTERVAL` | 10 | Watch 模式轮询间隔（秒） |
-| `AUTO_COMMIT` | true | 是否自动执行 git commit |
-| `YES_AUTO_CONFIRM` | true | 是否用 yes 自动确认安全提示 |
-| `CODEX_MODEL` | — | 指定使用的模型 |
-| `REQUIREMENT` | — | PRD 阶段的需求输入 |
+| `OPEND_IP` | 127.0.0.1 | Futu OpenD 地址 |
+| `OPEND_PORT` | 11111 | Futu OpenD 端口 |
+| `OPEND_ENCRYPT` | false | 是否加密连接 |
+| `FUTU_GROUP_NAME` | (空) | 股票分组名称，空则使用第一个分组 |
+| `PRICE_CHANGE_THRESHOLD` | 2.0 | 价格波动阈值 (%) |
+| `ALERT_COOLDOWN_MINUTES` | 15 | 告警冷却期 (分钟) |
+| `KLINE_REFRESH_INTERVAL` | 60000 | K线刷新间隔 (毫秒) |
+| `MARKET_STATE_POLL_INTERVAL` | 30000 | 市场状态轮询间隔 (毫秒) |
+| `RECONNECT_INITIAL_DELAY_MS` | 5000 | 重连初始延迟 (毫秒) |
+| `RECONNECT_MAX_DELAY_MS` | 60000 | 重连最大延迟 (毫秒) |
+| `MAIL_HOST` | (空) | SMTP 服务器 |
+| `MAIL_PORT` | 587 | SMTP 端口 |
+| `MAIL_USERNAME` | (空) | SMTP 用户名 |
+| `MAIL_PASSWORD` | (空) | SMTP 密码 |
+| `MAIL_TO` | (空) | 收件人 (逗号分隔) |
+| `MAIL_ENABLED` | true | 是否启用邮件通知 |
 
-### 工作流
+## 本地开发命令
 
-```
-用户设置 Current phase → Orchestrator 触发 Agent
-    ↓
-Agent 编写代码/文档（不执行 git）
-    ↓
-Agent 标记 phase-state 为 done
-    ↓
-Orchestrator 检测到 done，自动执行 git add + commit
-    ↓
-Orchestrator 触发下一个 phase
-```
-
-
----
-
-## 💬 Codex Desktop 聊天命令 (Quick Command)
-
-现在你可以直接在 Codex Desktop 聊天中使用 `/loop` 命令启动和管理 Loop，无需切换到终端！
-
-### 🚀 快速开始
-
-在聊天中输入以下任一命令，Agent 会自动识别并执行：
-
-| 命令 | 说明 |
-|------|------|
-| `/loop status` | 📊 查看当前 Loop 状态 |
-| `/loop start "需求描述"` | 🚀 从 PRD 阶段开始完整 Loop |
-| `/loop once` | ⏩ 单次触发当前阶段 |
-| `/loop phase <阶段名>` | 🎯 手动触发指定阶段 (prd/design/arch/code/test/regression) |
-| `/loop watch` | 👁️ 启动持续监听模式 |
-| `/loop pause` | ⏸️ 暂停 Loop |
-| `/loop resume` | ▶️ 恢复 Loop |
-| `/loop help` | ❓ 显示帮助 |
-
-### 💡 使用示例
-
-在 Codex Desktop 聊天中输入：
-
-```
-/loop start "实现一个定时任务调度管理服务，需要有前端管理页面，支持每个任务可配置调度节奏，要支持 docker 部署"
+```bash
+mvn compile          # 编译
+mvn test             # 运行测试
+mvn package          # 打包
+mvn spring-boot:run  # 启动服务
 ```
 
-Agent 会自动启动 Loop Orchestrator，实时显示执行进度，并在完成后显示最新状态。
+## 构建命令
 
-### ⚙️ 工作原理
+```bash
+mvn clean package -DskipTests    # 跳过测试打包
+docker compose build              # 构建 Docker 镜像
+```
 
-1. `AGENTS.md` 中定义了 `/loop` 命令的识别规则和执行方式
-2. Agent 识别命令后调用 `./scripts/loop-cli.sh` 包装脚本
-3. 脚本统一处理参数解析、环境变量设置和执行逻辑
-4. 执行结果实时返回给聊天窗口
+## 部署方式
+
+### Docker Compose (推荐)
+
+```bash
+docker compose up -d
+```
+
+服务暴露 actuator 健康检查端点: `http://localhost:8080/actuator/health`
+
+### Java 直接运行
+
+```bash
+mvn package -DskipTests
+java -jar target/futu-stock-monitor-1.0.0.jar
+```
+
+## 目录结构说明
+
+```
+AutoTradingSystem/
+├── pom.xml                    # Maven 构建
+├── Dockerfile                 # 多阶段 Docker 构建
+├── docker-compose.yml         # 容器编排
+├── .env.example               # 环境变量模板
+├── docs/                      # 项目文档
+│   ├── PRD.md                 # 产品需求
+│   ├── DESIGN.md              # 设计规范
+│   └── ARCHITECTURE.md        # 技术架构
+├── src/main/java/com/autotrading/
+│   ├── AutoTradingApplication.java   # Spring Boot 主类
+│   ├── config/                       # 配置类
+│   ├── futu/                         # Futu SDK 集成层
+│   ├── account/                      # 账户与分组服务
+│   ├── market/                       # 行情与市场时段
+│   ├── indicator/                    # MA 计算与交叉检测
+│   ├── monitor/                      # 监控与告警协调
+│   ├── notification/                 # 邮件通知
+│   ├── startup/                      # 启动编排
+│   └── model/                        # 数据模型
+└── src/test/                         # 单元测试
+```
+
+## Loop Engineering 系统
+
+本项目使用 Loop Engineering 闭环系统管理开发流程:
+
+- PRD Loop → Design Loop → Arch Loop → Code Loop → Test Loop → Regression Loop
+- 每阶段独立验证 (maker/checker 分离)
+- 详细文档见 `docs/` 目录
+
+```bash
+./scripts/loop-cli.sh status     # 查看状态
+./scripts/loop-cli.sh help       # 帮助
+```
