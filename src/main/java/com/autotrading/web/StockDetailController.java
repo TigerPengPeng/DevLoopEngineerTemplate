@@ -4,6 +4,7 @@ import com.autotrading.market.KLineService;
 import com.autotrading.market.MarketSessionService;
 import com.autotrading.market.SnapshotPollingService;
 import com.autotrading.market.StockAnalysisService;
+import com.autotrading.market.TradingSignalService;
 import com.autotrading.startup.QuoteProcessor;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,15 +25,18 @@ public class StockDetailController {
     private final MarketSessionService sessionService;
     private final SnapshotPollingService snapshotService;
     private final QuoteProcessor quoteProcessor;
+    private final TradingSignalService signalService;
 
     public StockDetailController(KLineService kLineService, StockAnalysisService analysisService,
                                   MarketSessionService sessionService, SnapshotPollingService snapshotService,
-                                  QuoteProcessor quoteProcessor) {
+                                  QuoteProcessor quoteProcessor,
+                                  TradingSignalService signalService) {
         this.kLineService = kLineService;
         this.analysisService = analysisService;
         this.sessionService = sessionService;
         this.snapshotService = snapshotService;
         this.quoteProcessor = quoteProcessor;
+        this.signalService = signalService;
     }
 
     @GetMapping("/{market}/{code}/kline")
@@ -81,6 +85,42 @@ public class StockDetailController {
             @PathVariable int market, @PathVariable String code,
             @RequestParam(defaultValue = "ma_crossover") String strategy) {
         return analysisService.analyze(market, code, strategy);
+    }
+
+    @GetMapping("/{market}/{code}/signals")
+    public Map<String, Object> getSignals(@PathVariable int market, @PathVariable String code) {
+        List<TradingSignalService.Signal> signals = signalService.getSignals(market, code);
+
+        List<Map<String, Object>> signalList = new ArrayList<>();
+        for (TradingSignalService.Signal s : signals) {
+            Map<String, Object> sig = new LinkedHashMap<>();
+            sig.put("index", s.index());
+            sig.put("date", s.date());
+            sig.put("type", s.type().name());
+            sig.put("price", s.price());
+            sig.put("strategy", s.strategy());
+            sig.put("reason", s.reason());
+            signalList.add(sig);
+        }
+
+        long buyCount = signals.stream().filter(s -> s.type() == TradingSignalService.SignalType.BUY).count();
+        long sellCount = signals.stream().filter(s -> s.type() == TradingSignalService.SignalType.SELL).count();
+
+        TradingSignalService.Signal latest = signals.isEmpty() ? null : signals.get(signals.size() - 1);
+        String latestAdvice = "暂无明确信号";
+        if (latest != null) {
+            latestAdvice = latest.type() == TradingSignalService.SignalType.BUY
+                    ? "最近信号: 买入 (" + latest.reason() + ")"
+                    : "最近信号: 卖出 (" + latest.reason() + ")";
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("signals", signalList);
+        result.put("buyCount", buyCount);
+        result.put("sellCount", sellCount);
+        result.put("latestAdvice", latestAdvice);
+        result.put("totalSignals", signals.size());
+        return result;
     }
 
     @GetMapping("/strategies")

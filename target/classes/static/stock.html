@@ -70,6 +70,17 @@
   .ma-table { width: 100%; font-size: 13px; }
   .ma-table td { padding: 5px 0; }
   .ma-table .num { text-align: right; font-family: "SF Mono","Cascadia Code",monospace; font-weight: 600; }
+  .signal-item { display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid rgba(48,54,61,0.5); font-size: 12px; }
+  .signal-item:last-child { border-bottom: none; }
+  .signal-tag { display: inline-block; padding: 1px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .signal-tag.buy { background: rgba(63,185,80,0.15); color: var(--green); }
+  .signal-tag.sell { background: rgba(248,81,73,0.15); color: var(--red); }
+  .signal-date { color: var(--text-dim); font-size: 11px;
+    font-family: "SF Mono","Cascadia Code",monospace; }
+  .signal-reason { flex: 1; line-height: 1.5; }
+  .signal-strategy { color: var(--purple); font-size: 11px; }
 </style>
 </head>
 <body>
@@ -107,6 +118,16 @@
         <div id="breakout-list"></div>
       </div>
     </div>
+
+    <div style="margin-top:16px">
+      <div class="panel">
+        <div class="panel-header">📈 Buy/Sell Signals <span style="font-weight:400;color:var(--text-dim);font-size:11px;margin-left:8px" id="signal-summary"></span></div>
+        <div class="panel-body">
+          <div style="padding:8px 12px;background:rgba(88,166,255,0.08);border-radius:6px;margin-bottom:8px;font-size:13px;color:var(--blue)" id="latest-advice">分析中...</div>
+          <div id="signal-list"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="sidebar">
@@ -139,6 +160,7 @@ const params = new URLSearchParams(location.search);
 const market = parseInt(params.get('market') || '0');
 const code = params.get('code') || '';
 var chart = null;
+var candleSeries = null;
 
 async function init() {
   document.getElementById('stock-code').textContent = code;
@@ -161,6 +183,7 @@ async function init() {
     renderChart(data);
     renderBreakouts(data);
     runAnalysis();
+    loadSignals();
   } catch(e) {
     document.getElementById('chart').innerHTML = '<div class="loading">Failed to load: ' + e.message + '</div>';
   }
@@ -179,7 +202,7 @@ function renderChart(data) {
     timeScale: { borderColor: '#30363d', timeVisible: false }
   });
 
-  var candleSeries = chart.addCandlestickSeries({
+  candleSeries = chart.addCandlestickSeries({
     upColor: '#3fb950', downColor: '#f85149',
     borderUpColor: '#3fb950', borderDownColor: '#f85149',
     wickUpColor: '#3fb950', wickDownColor: '#f85149'
@@ -271,6 +294,58 @@ function renderBreakouts(data) {
         ', 偏离 ' + b.distPct + '%)</span></div>';
     }).join('');
     document.getElementById('breakout-list').innerHTML = html;
+  }
+}
+
+async function loadSignals() {
+  try {
+    var resp = await fetch('/api/stock/' + market + '/' + code + '/signals');
+    var data = await resp.json();
+
+    // Summary
+    document.getElementById('signal-summary').textContent =
+      '买入 ' + data.buyCount + ' / 卖出 ' + data.sellCount;
+    document.getElementById('latest-advice').textContent = data.latestAdvice;
+
+    // Signal list (most recent 15, newest first)
+    var signals = (data.signals || []).slice(-15).reverse();
+    if (signals.length === 0) {
+      document.getElementById('signal-list').innerHTML =
+        '<div class="loading" style="padding:20px">暂无买卖信号</div>';
+      return;
+    }
+
+    var html = signals.map(function(s) {
+      var tagClass = s.type === 'BUY' ? 'buy' : 'sell';
+      var tagText = s.type === 'BUY' ? '买入' : '卖出';
+      var dateShort = (s.date || '').split(' ')[0];
+      return '<div class="signal-item">' +
+        '<span class="signal-tag ' + tagClass + '">' + tagText + '</span>' +
+        '<div class="signal-reason">' +
+          '<div>' + s.reason + '</div>' +
+          '<div><span class="signal-date">' + dateShort + ' @ ' + (s.price || '').toFixed(2) +
+          '</span> <span class="signal-strategy">' + s.strategy + '</span></div>' +
+        '</div></div>';
+    }).join('');
+    document.getElementById('signal-list').innerHTML = html;
+
+    // Place markers on chart
+    if (candleSeries && data.signals && data.signals.length > 0) {
+      var markers = data.signals.map(function(s) {
+        var isBuy = s.type === 'BUY';
+        return {
+          time: (s.date || '').split(' ')[0],
+          position: isBuy ? 'belowBar' : 'aboveBar',
+          color: isBuy ? '#3fb950' : '#f85149',
+          shape: isBuy ? 'arrowUp' : 'arrowDown',
+          text: isBuy ? '买' : '卖'
+        };
+      });
+      candleSeries.setMarkers(markers);
+    }
+  } catch(e) {
+    document.getElementById('signal-list').innerHTML =
+      '<div class="loading" style="padding:20px">信号加载失败: ' + e.message + '</div>';
   }
 }
 

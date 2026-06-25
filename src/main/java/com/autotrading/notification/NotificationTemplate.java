@@ -78,6 +78,61 @@ public class NotificationTemplate {
 
     // ---- Helpers ----
 
+    // ---- Daily Risk Report ----
+
+    public static String riskReportBody(String marketLabel, String dateStr,
+                                         java.util.List<RiskReportItem> items) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2 style=\"color:#dc2626\">")
+          .append(marketLabel).append(" 当日风险股票汇总</h2>");
+        sb.append("<p style=\"color:#8b949e;font-size:13px;margin-bottom:16px\">数据日期: ")
+          .append(dateStr).append("</p>");
+
+        if (items.isEmpty()) {
+            sb.append("<p style=\"padding:20px;background:#f9fafb;border-radius:8px;text-align:center\">")
+              .append("今日无高风险股票，市场整体平稳</p>");
+        } else {
+            sb.append("<table style=\"border-collapse:collapse;width:100%;font-size:13px\">");
+            sb.append("<tr><th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6;text-align:left\">股票</th>")
+              .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6\">风险分</th>")
+              .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6\">等级</th>")
+              .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6\">涨跌%</th>")
+              .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6;text-align:left\">风险因素</th></tr>");
+
+            for (RiskReportItem item : items) {
+                String levelColor = item.highRisk() ? RED : "#d29922";
+                String levelText = item.highRisk() ? "高风险" : "中等";
+                String changeColor = item.changeRate() >= 0 ? GREEN : RED;
+                String changeStr = String.format("%s%.2f%%",
+                        item.changeRate() >= 0 ? "+" : "", item.changeRate());
+
+                sb.append("<tr>")
+                  .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;font-weight:600\">")
+                  .append(item.stockName()).append(" <span style=\"color:#8b949e;font-size:12px\">")
+                  .append(item.stockKey()).append("</span></td>")
+                  .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center;font-weight:700;color:")
+                  .append(levelColor).append("\">").append(item.score()).append("</td>")
+                  .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center;color:")
+                  .append(levelColor).append(";font-weight:600\">").append(levelText).append("</td>")
+                  .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center;color:")
+                  .append(changeColor).append(";font-weight:600\">").append(changeStr).append("</td>")
+                  .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;font-size:12px\">")
+                  .append(String.join("、", item.riskFactors())).append("</td>")
+                  .append("</tr>");
+            }
+            sb.append("</table>");
+        }
+
+        sb.append("<p style=\"margin-top:16px;font-size:12px;color:#8b949e\">")
+          .append("风险分越高表示风险越大。60分以上为高风险，30-59为中等风险。")
+          .append("</p>");
+
+        return htmlWrap(sb.toString());
+    }
+
+    public record RiskReportItem(String stockKey, String stockName, int score, boolean highRisk,
+                                 double changeRate, java.util.List<String> riskFactors) {}
+
     private static String htmlWrap(String body) {
         return "<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto\">" +
                 body +

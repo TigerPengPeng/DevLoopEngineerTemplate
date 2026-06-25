@@ -1,12 +1,12 @@
 package com.autotrading.notification;
 
 import com.autotrading.config.NotificationProperties;
+import com.autotrading.market.RiskAssessmentService;
 import com.autotrading.model.MAEvent;
 import com.autotrading.model.PriceAlert;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -66,6 +66,22 @@ public class EmailNotificationService {
         }
         String subject = NotificationTemplate.priceAlertSubject(alert);
         String body = NotificationTemplate.priceAlertBody(alert);
+        sendHtml(subject, body);
+    }
+
+    public void sendRiskReport(String subject, String marketLabel, String dateStr,
+                              List<RiskAssessmentService.RiskAssessment> assessments) {
+        if (!configured) {
+            log.debug("Email not configured, skipping risk report");
+            return;
+        }
+        List<NotificationTemplate.RiskReportItem> items = assessments.stream()
+                .map(a -> new NotificationTemplate.RiskReportItem(
+                        a.stockKey(), a.stockName(), a.score(),
+                        a.level() == RiskAssessmentService.RiskLevel.HIGH,
+                        a.changeRate(), a.riskFactors()))
+                .toList();
+        String body = NotificationTemplate.riskReportBody(marketLabel, dateStr, items);
         sendHtml(subject, body);
     }
 

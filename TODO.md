@@ -86,3 +86,29 @@
 ## 已完成
 
 - (无)
+
+## 新增任务（第二轮迭代）
+
+- [x] T14 [type:backend] 风险评估服务
+  - 修改目标: RiskAssessmentService — 多指标综合风险评分（MA/MACD/RSI/KDJ/布林带/量价）
+  - 允许修改范围: src/main/java/.../market/
+  - 不允许破坏的逻辑: T7 K线缓存, StockAnalysisService
+  - 验收标准: 给定K线数据，风险评分和风险等级计算正确
+
+- [x] T15 [type:backend] 每日收盘风险报告邮件
+  - 修改目标: DailyRiskReportScheduler + NotificationTemplate 风险报告模板 + EmailNotificationService 新方法
+  - 允许修改范围: src/main/java/.../monitor/, .../notification/
+  - 不允许破坏的逻辑: T10 邮件发送, T14 风险评估
+  - 验收标准: A股收盘后/美股收盘后自动发送风险股票汇总邮件
+
+- [x] T16 [type:backend] 买卖点信号服务
+  - 修改目标: TradingSignalService — 基于K线计算买卖点 + 原因
+  - 允许修改范围: src/main/java/.../market/
+  - 不允许破坏的逻辑: T7 K线缓存
+  - 验收标准: 给定K线序列，检测到正确的买卖信号及原因
+
+- [x] T17 [type:backend] 详情页买卖点展示
+  - 修改目标: StockDetailController 新增 /signals 端点 + stock.html 图表标记
+  - 允许修改范围: src/main/java/.../web/, src/main/resources/static/stock.html
+  - 不允许破坏的逻辑: 现有K线图表渲染逻辑
+  - 验收标准: 详情页K线上显示买卖点标记，面板展示原因
