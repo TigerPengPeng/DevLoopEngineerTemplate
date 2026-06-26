@@ -3,7 +3,7 @@
 > 阶段状态文件。每次运行更新。
 
 Last run: 2026-06-26T08:20:00Z
-Phase: done
+Phase: idle
 
 ## Current
 - (无，已交付)
