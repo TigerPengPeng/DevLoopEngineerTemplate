@@ -13,10 +13,13 @@ import java.util.List;
 public class NotificationProperties {
 
     private List<String> to = List.of();
+    private String from = "";
     private boolean enabled = true;
 
     public List<String> getTo() { return to; }
     public void setTo(List<String> to) { this.to = to; }
+    public String getFrom() { return from; }
+    public void setFrom(String from) { this.from = from; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

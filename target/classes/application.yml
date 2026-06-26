@@ -3,15 +3,18 @@ spring:
     name: futu-stock-monitor
   mail:
     host: ${MAIL_HOST:}
-    port: ${MAIL_PORT:587}
+    port: ${MAIL_PORT:465}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     properties:
       mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
-      mail.smtp.connectiontimeout: 10000
-      mail.smtp.timeout: 10000
-      mail.smtp.writetimeout: 10000
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:false}
+      mail.smtp.ssl.enable: ${MAIL_SSL:true}
+      mail.smtp.connectiontimeout: 15000
+      mail.smtp.timeout: 15000
+      mail.smtp.writetimeout: 15000
+      mail.smtp.socketFactory.port: ${MAIL_PORT:465}
+      mail.smtp.socketFactory.class: javax.net.ssl.SSLSocketFactory
 
 futu:
   opend:
@@ -35,6 +38,7 @@ futu:
 
 notification:
   mail:
+    from: ${MAIL_FROM:}
     to: ${MAIL_TO:}
     enabled: ${MAIL_ENABLED:true}
 

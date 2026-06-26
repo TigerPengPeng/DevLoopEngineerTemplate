@@ -1,4 +1,7 @@
+com/autotrading/futu/AsyncRequestBridgeTest.class
+com/autotrading/futu/ReconnectLifecycleTest.class
+com/autotrading/indicator/CrossoverDetectorTest.class
+com/autotrading/notification/NotificationTemplateTest.class
 com/autotrading/monitor/AlertCoordinatorTest.class
 com/autotrading/market/MarketSessionServiceTest.class
 com/autotrading/indicator/MACalculatorTest.class
-com/autotrading/indicator/CrossoverDetectorTest.class

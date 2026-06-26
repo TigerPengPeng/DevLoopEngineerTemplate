@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import jakarta.mail.internet.MimeMessage;
@@ -16,7 +17,8 @@ import java.util.List;
 
 /**
  * Sends alert emails via Spring Mail (JavaMail).
- * Failures are logged but do not interrupt the monitoring flow.
+ * Uses async dispatch so SMTP latency never blocks the monitoring thread.
+ * Failures are logged with full stack traces but do not interrupt monitoring.
  */
 @Service
 public class EmailNotificationService {
@@ -46,35 +48,29 @@ public class EmailNotificationService {
             return;
         }
         configured = true;
-        log.info("Email notifications enabled for {} recipients", properties.getTo().size());
+        log.info("Email notifications enabled for {} recipients: {}", properties.getTo().size(), properties.getTo());
     }
 
+    @Async("emailExecutor")
     public void sendMAEventAlert(MAEvent event) {
-        if (!configured) {
-            log.debug("Email not configured, skipping MA alert for {}", event.getStockKey());
-            return;
-        }
+        if (!configured) return;
         String subject = NotificationTemplate.maEventSubject(event);
         String body = NotificationTemplate.maEventBody(event);
         sendHtml(subject, body);
     }
 
+    @Async("emailExecutor")
     public void sendPriceAlert(PriceAlert alert) {
-        if (!configured) {
-            log.debug("Email not configured, skipping price alert for {}", alert.getStockKey());
-            return;
-        }
+        if (!configured) return;
         String subject = NotificationTemplate.priceAlertSubject(alert);
         String body = NotificationTemplate.priceAlertBody(alert);
         sendHtml(subject, body);
     }
 
+    @Async("emailExecutor")
     public void sendRiskReport(String subject, String marketLabel, String dateStr,
                               List<RiskAssessmentService.RiskAssessment> assessments) {
-        if (!configured) {
-            log.debug("Email not configured, skipping risk report");
-            return;
-        }
+        if (!configured) return;
         List<NotificationTemplate.RiskReportItem> items = assessments.stream()
                 .map(a -> new NotificationTemplate.RiskReportItem(
                         a.stockKey(), a.stockName(), a.score(),
@@ -87,17 +83,21 @@ public class EmailNotificationService {
 
     private void sendHtml(String subject, String htmlBody) {
         List<String> recipients = properties.getTo();
+        log.info("Sending email to {} recipient(s): {}", recipients.size(), recipients);
         for (String to : recipients) {
             try {
                 MimeMessage message = mailSender.createMimeMessage();
                 MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+                helper.setFrom(properties.getFrom());
                 helper.setTo(to);
                 helper.setSubject(subject);
                 helper.setText(htmlBody, true);
                 mailSender.send(message);
-                log.info("Email sent (to={}, subject={})", to, subject);
-            } catch (Exception e) {
-                log.error("Email send failed (to={}, subject={}): {}", to, subject, e.getMessage());
+                log.info("Email sent successfully (to={}, subject={})", to, subject);
+            } catch (Throwable t) {
+                // Catch Throwable (not just Exception): classpath mismatches can
+                // throw NoSuchMethodError / NoClassDefFoundError which extend Error
+                log.error("Email send FAILED (to={}, subject={}): {}", to, subject, t.getMessage(), t);
             }
         }
     }

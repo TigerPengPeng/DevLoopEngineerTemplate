@@ -16,9 +16,12 @@ services:
       ALERT_COOLDOWN_MINUTES: ${ALERT_COOLDOWN_MINUTES:-15}
       # Email
       MAIL_HOST: ${MAIL_HOST:-}
-      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_PORT: ${MAIL_PORT:-465}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SSL: ${MAIL_SSL:-true}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
       MAIL_TO: ${MAIL_TO:-}
       MAIL_ENABLED: ${MAIL_ENABLED:-true}
       # Reconnect

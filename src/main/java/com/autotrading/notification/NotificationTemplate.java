@@ -3,7 +3,6 @@ package com.autotrading.notification;
 import com.autotrading.model.Direction;
 import com.autotrading.model.MAEvent;
 import com.autotrading.model.PriceAlert;
-import com.autotrading.model.TradingSession;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -33,17 +32,21 @@ public class NotificationTemplate {
         String[] parts = event.getStockKey().split("\\.");
         String marketLabel = marketLabel(parts.length > 0 ? Integer.parseInt(parts[0]) : 0);
 
-        return htmlWrap(String.format(
-                "<h2 style=\"color:%s\">%s %s MA%d</h2>" +
-                "<table style=\"border-collapse:collapse;width:100%%;font-size:14px\">" +
-                row("股票", event.getStockName() + " (" + event.getStockKey() + ")") +
-                colorRow("事件", action + " MA" + event.getMaPeriod(), color) +
-                colorRow("当前价", formatPrice(event.getPrice()), color) +
-                row("MA" + event.getMaPeriod(), formatPrice(event.getMaValue())) +
-                row("交易时段", event.getSession().getLabel()) +
-                row("市场", marketLabel) +
-                row("时间", TS_FMT.format(new Date(event.getTimestamp()))) +
-                "</table>", color));
+        // Use StringBuilder to avoid String.format treating row() outputs
+        // (which contain literal % chars from width:30%) as format specifiers.
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2 style=\"color:").append(color).append("\">")
+          .append(action).append(" MA").append(event.getMaPeriod()).append("</h2>");
+        sb.append("<table style=\"border-collapse:collapse;width:100%;font-size:14px\">");
+        sb.append(row("股票", event.getStockName() + " (" + event.getStockKey() + ")"));
+        sb.append(colorRow("事件", action + " MA" + event.getMaPeriod(), color));
+        sb.append(colorRow("当前价", formatPrice(event.getPrice()), color));
+        sb.append(row("MA" + event.getMaPeriod(), formatPrice(event.getMaValue())));
+        sb.append(row("交易时段", event.getSession().getLabel()));
+        sb.append(row("市场", marketLabel));
+        sb.append(row("时间", TS_FMT.format(new Date(event.getTimestamp()))));
+        sb.append("</table>");
+        return htmlWrap(sb.toString());
     }
 
     // ---- Price Alert ----
@@ -62,21 +65,22 @@ public class NotificationTemplate {
         String changeStr = String.format("%s%.2f%%",
                 alert.getChangePercent() > 0 ? "+" : "", alert.getChangePercent());
 
-        return htmlWrap(String.format(
-                "<h2 style=\"color:%s\">%s %s</h2>" +
-                "<table style=\"border-collapse:collapse;width:100%%;font-size:14px\">" +
-                row("股票", alert.getStockName() + " (" + alert.getStockKey() + ")") +
-                row("当前价", formatPrice(alert.getPrice())) +
-                row("前收盘", formatPrice(alert.getPreClose())) +
-                colorRow("波动幅度", changeStr, color) +
-                row("阈值", "±" + alert.getThreshold() + "%") +
-                row("交易时段", alert.getSession().getLabel()) +
-                row("市场", marketLabel) +
-                row("时间", TS_FMT.format(new Date(alert.getTimestamp()))) +
-                "</table>", color));
+        // StringBuilder avoids the String.format %  collision with row() output
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2 style=\"color:").append(color).append("\">")
+          .append(direction).append("</h2>");
+        sb.append("<table style=\"border-collapse:collapse;width:100%;font-size:14px\">");
+        sb.append(row("股票", alert.getStockName() + " (" + alert.getStockKey() + ")"));
+        sb.append(row("当前价", formatPrice(alert.getPrice())));
+        sb.append(row("前收盘", formatPrice(alert.getPreClose())));
+        sb.append(colorRow("波动幅度", changeStr, color));
+        sb.append(row("阈值", "+/-" + alert.getThreshold() + "%"));
+        sb.append(row("交易时段", alert.getSession().getLabel()));
+        sb.append(row("市场", marketLabel));
+        sb.append(row("时间", TS_FMT.format(new Date(alert.getTimestamp()))));
+        sb.append("</table>");
+        return htmlWrap(sb.toString());
     }
-
-    // ---- Helpers ----
 
     // ---- Daily Risk Report ----
 
@@ -133,6 +137,8 @@ public class NotificationTemplate {
     public record RiskReportItem(String stockKey, String stockName, int score, boolean highRisk,
                                  double changeRate, java.util.List<String> riskFactors) {}
 
+    // ---- Helpers ----
+
     private static String htmlWrap(String body) {
         return "<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto\">" +
                 body +
@@ -142,17 +148,13 @@ public class NotificationTemplate {
     }
 
     private static String row(String label, String value) {
-        return String.format(
-                "<tr><td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold;width:30%%\">%s</td>" +
-                "<td style=\"padding:8px 12px;border:1px solid #e5e7eb\">%s</td></tr>",
-                label, value);
+        return "<tr><td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold;width:30%\">" + label + "</td>" +
+                "<td style=\"padding:8px 12px;border:1px solid #e5e7eb\">" + value + "</td></tr>";
     }
 
     private static String colorRow(String label, String value, String color) {
-        return String.format(
-                "<tr><td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold\">%s</td>" +
-                "<td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:%s;font-weight:bold\">%s</td></tr>",
-                label, color, value);
+        return "<tr><td style=\"padding:8px 12px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold\">" + label + "</td>" +
+                "<td style=\"padding:8px 12px;border:1px solid #e5e7eb;color:" + color + ";font-weight:bold\">" + value + "</td></tr>";
     }
 
     private static String formatPrice(double price) {
