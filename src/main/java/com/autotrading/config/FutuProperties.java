@@ -60,6 +60,11 @@ public class FutuProperties {
         private List<Integer> maPeriods = List.of(5, 13, 30, 55);
         private double priceChangeThreshold = 2.0;
         private int alertCooldownMinutes = 15;
+        /** Per-type noise cooldown minutes (NR-5 P1). Falls back to alertCooldownMinutes if null. */
+        private Integer maNoiseMinutes;
+        private Integer fluctuationNoiseMinutes;
+        private Integer signalNoiseMinutes;
+        private Integer breakdownNoiseMinutes;
         private long klineRefreshInterval = 60000;
         private long marketStatePollInterval = 30000;
         private long snapshotPollInterval = 10000;
@@ -76,6 +81,14 @@ public class FutuProperties {
         public void setMarketStatePollInterval(long v) { this.marketStatePollInterval = v; }
         public long getSnapshotPollInterval() { return snapshotPollInterval; }
         public void setSnapshotPollInterval(long v) { this.snapshotPollInterval = v; }
+        public Integer getMaNoiseMinutes() { return maNoiseMinutes; }
+        public void setMaNoiseMinutes(Integer v) { this.maNoiseMinutes = v; }
+        public Integer getFluctuationNoiseMinutes() { return fluctuationNoiseMinutes; }
+        public void setFluctuationNoiseMinutes(Integer v) { this.fluctuationNoiseMinutes = v; }
+        public Integer getSignalNoiseMinutes() { return signalNoiseMinutes; }
+        public void setSignalNoiseMinutes(Integer v) { this.signalNoiseMinutes = v; }
+        public Integer getBreakdownNoiseMinutes() { return breakdownNoiseMinutes; }
+        public void setBreakdownNoiseMinutes(Integer v) { this.breakdownNoiseMinutes = v; }
     }
 
     public static class Reconnect {

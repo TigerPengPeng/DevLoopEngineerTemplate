@@ -3,7 +3,11 @@ package com.autotrading.market;
 import com.autotrading.futu.AsyncRequestBridge;
 import com.autotrading.futu.FutuConnectionManager;
 import com.autotrading.model.TradingSession;
+import com.autotrading.model.StockInfo;
 import com.futu.openapi.pb.QotCommon;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +24,9 @@ class MarketSessionServiceTest {
         FutuConnectionManager mockConn = Mockito.mock(FutuConnectionManager.class);
         AsyncRequestBridge mockBridge = Mockito.mock(AsyncRequestBridge.class);
         service = new MarketSessionService(mockConn, mockBridge);
+        // Pin the clock to a Saturday so the fallback time inference is
+        // deterministic (all markets CLOSED on a weekend) instead of flaky.
+        service.setClock(Clock.fixed(Instant.parse("2026-06-27T13:00:00Z"), ZoneId.systemDefault()));
     }
 
     @Test
@@ -102,5 +109,35 @@ class MarketSessionServiceTest {
     @DisplayName("isTrading returns false for CLOSED")
     void testIsTradingClosed() {
         assertFalse(service.isTrading(11));
+    }
+
+    @Test
+    @DisplayName("US regular hours inferred as REGULAR (10:00 ET)")
+    void testInferUSRegular() {
+        service.setClock(Clock.fixed(Instant.parse("2026-06-26T14:00:00Z"), ZoneId.systemDefault()));
+        assertEquals(TradingSession.REGULAR, service.inferSession(StockInfo.MARKET_US));
+    }
+
+    @Test
+    @DisplayName("US pre-market inferred as PRE_MARKET (04:00 ET)")
+    void testInferUSPreMarket() {
+        service.setClock(Clock.fixed(Instant.parse("2026-06-26T08:00:00Z"), ZoneId.systemDefault()));
+        assertEquals(TradingSession.PRE_MARKET, service.inferSession(StockInfo.MARKET_US));
+    }
+
+    @Test
+    @DisplayName("China regular hours inferred as REGULAR (10:00 Beijing)")
+    void testInferCNRegular() {
+        // 02:00 UTC = 10:00 Asia/Shanghai (trading window 09:15-11:30)
+        service.setClock(Clock.fixed(Instant.parse("2026-06-26T02:00:00Z"), ZoneId.systemDefault()));
+        assertEquals(TradingSession.REGULAR, service.inferSession(StockInfo.MARKET_CN_SH));
+    }
+
+    @Test
+    @DisplayName("Weekend inferred as CLOSED for all markets")
+    void testInferWeekendClosed() {
+        assertEquals(TradingSession.CLOSED, service.inferSession(StockInfo.MARKET_US));
+        assertEquals(TradingSession.CLOSED, service.inferSession(StockInfo.MARKET_CN_SH));
+        assertEquals(TradingSession.CLOSED, service.inferSession(StockInfo.MARKET_HK));
     }
 }

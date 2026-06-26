@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.ZoneId;
+import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,9 @@ public class MarketSessionService {
     private final FutuConnectionManager connectionManager;
     private final AsyncRequestBridge bridge;
 
+    /** Time source for fallback inference; overridable in tests. */
+    private Clock clock = Clock.systemDefaultZone();
+
     /** Cache: market code -> current trading session. */
     private final Map<Integer, TradingSession> sessionCache = new ConcurrentHashMap<>();
 
@@ -50,6 +54,9 @@ public class MarketSessionService {
         this.connectionManager = connectionManager;
         this.bridge = bridge;
     }
+
+    /** Test seam: pins the time source so fallback inference is deterministic. */
+    void setClock(Clock clock) { this.clock = clock; }
 
     /**
      * Registers representative stocks per market for state queries.
@@ -175,7 +182,7 @@ public class MarketSessionService {
      * Used when getMarketState is unavailable (insufficient permission or unsupported market).
      */
     public TradingSession inferSession(int market) {
-        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime now = ZonedDateTime.now(clock);
         DayOfWeek dow = now.getDayOfWeek();
         boolean weekend = dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY;
 

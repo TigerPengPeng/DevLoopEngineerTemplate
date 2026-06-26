@@ -40,6 +40,10 @@ futu:
     ma-periods: [5, 13, 30, 55]
     price-change-threshold: ${PRICE_CHANGE_THRESHOLD:2.0}
     alert-cooldown-minutes: ${ALERT_COOLDOWN_MINUTES:15}
+    ma-noise-minutes: ${MA_NOISE_MINUTES:}
+    fluctuation-noise-minutes: ${FLUCTUATION_NOISE_MINUTES:}
+    signal-noise-minutes: ${SIGNAL_NOISE_MINUTES:}
+    breakdown-noise-minutes: ${BREAKDOWN_NOISE_MINUTES:}
     kline-refresh-interval: ${KLINE_REFRESH_INTERVAL:60000}
     market-state-poll-interval: ${MARKET_STATE_POLL_INTERVAL:30000}
     snapshot-poll-interval: ${SNAPSHOT_POLL_INTERVAL:10000}

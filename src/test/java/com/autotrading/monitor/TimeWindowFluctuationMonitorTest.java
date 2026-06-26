@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -101,5 +104,74 @@ class TimeWindowFluctuationMonitorTest {
                 ArgumentCaptor.forClass(FluctuationConfigEntity.class);
         verify(repository).save(captor.capture());
         assertEquals("OR", captor.getValue().getLogic());
+    }
+
+    @Test
+    @DisplayName("BF-2: empty rules persist as [] and reload does not fall back to default")
+    void emptyRulesPersistWithoutDefaultFallback() {
+        FutuProperties.Fluctuation cfg = new FutuProperties.Fluctuation();
+        cfg.setLogic("OR");
+        cfg.setRules(List.of());
+        cfg.setEvalIntervalMs(30000);
+
+        monitor.updateConfig(cfg);
+
+        ArgumentCaptor<FluctuationConfigEntity> captor =
+                ArgumentCaptor.forClass(FluctuationConfigEntity.class);
+        verify(repository).save(captor.capture());
+        assertEquals("[]", captor.getValue().getRulesJson());
+        assertEquals(0, monitor.getConfig().getRules().size());
+
+        // Reloading an explicitly-empty row must NOT re-seed the default rules.
+        FluctuationConfigEntity emptyEntity = new FluctuationConfigEntity();
+        emptyEntity.setId(1L);
+        emptyEntity.setLogic("OR");
+        emptyEntity.setRulesJson("[]");
+        when(repository.findById(1L)).thenReturn(Optional.of(emptyEntity));
+
+        monitor.loadFromDatabase();
+
+        assertEquals(0, monitor.getConfig().getRules().size());
+    }
+
+    @Test
+    @DisplayName("OR logic: stock qualifies when any rule matches")
+    void evaluateOrLogicQualifies() {
+        FutuProperties.Fluctuation cfg = new FutuProperties.Fluctuation();
+        cfg.setLogic("OR");
+        cfg.setRules(List.of(new FutuProperties.FluctuationRule(3, 3.0),
+                             new FutuProperties.FluctuationRule(5, 5.0)));
+        cfg.setEvalIntervalMs(30000);
+        monitor.updateConfig(cfg);
+
+        // +4% within 3 min -> rule1 matches; 5 min rule needs >=5% so it does not.
+        monitor.recordPrice("11.AAPL", 100.0, 0L);
+        monitor.recordPrice("11.AAPL", 100.0, 60_000L);
+        monitor.recordPrice("11.AAPL", 104.0, 180_000L);
+
+        TimeWindowFluctuationMonitor.StockFluctuationResult result =
+                monitor.evaluate("11.AAPL", "Apple");
+
+        assertNotNull(result);
+        assertEquals(1, result.matchedRules().size());
+        assertEquals("涨", result.direction());
+    }
+
+    @Test
+    @DisplayName("AND logic: stock does not qualify unless every rule matches")
+    void evaluateAndLogicRequiresAll() {
+        FutuProperties.Fluctuation cfg = new FutuProperties.Fluctuation();
+        cfg.setLogic("AND");
+        cfg.setRules(List.of(new FutuProperties.FluctuationRule(3, 3.0),
+                             new FutuProperties.FluctuationRule(5, 5.0)));
+        cfg.setEvalIntervalMs(30000);
+        monitor.updateConfig(cfg);
+
+        // +4% matches rule1 but not rule2 (>=5%); AND therefore does not qualify.
+        monitor.recordPrice("11.AAPL", 100.0, 0L);
+        monitor.recordPrice("11.AAPL", 100.0, 60_000L);
+        monitor.recordPrice("11.AAPL", 104.0, 180_000L);
+
+        assertNull(monitor.evaluate("11.AAPL", "Apple"));
     }
 }

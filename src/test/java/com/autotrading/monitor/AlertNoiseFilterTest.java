@@ -53,6 +53,24 @@ class AlertNoiseFilterTest {
         assertTrue(filter.shouldSendEmail("MA", "11.TSLA:MA5:BREAK_UP", 2000L));
     }
 
+
+    @Test
+    @DisplayName("Per-type cooldown override takes precedence (NR-5)")
+    void perTypeCooldownOverride() {
+        FutuProperties props = new FutuProperties();
+        props.getMonitor().setAlertCooldownMinutes(15);
+        props.getMonitor().setMaNoiseMinutes(0);  // MA: no cooldown
+        AlertNoiseFilter nf = new AlertNoiseFilter(props);
+
+        // MA alerts always pass (0 min cooldown)
+        assertTrue(nf.shouldSendEmail("MA", "key", 1000L));
+        assertTrue(nf.shouldSendEmail("MA", "key", 1001L));
+
+        // FLUCTUATION still uses default 15 min
+        assertTrue(nf.shouldSendEmail("FLUCTUATION", "key", 1000L));
+        assertFalse(nf.shouldSendEmail("FLUCTUATION", "key", 2000L));
+    }
+
     @Test
     @DisplayName("Zero cooldown allows all alerts through")
     void zeroCooldownAllowsAll() {
