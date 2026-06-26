@@ -1,9 +1,16 @@
 # ARCHITECTURE — 技术架构文档
 
-> 状态: **frozen** | draft-frozen | frozen
-> 版本: v1.0
-> 最后更新: 2026-06-25
+> 状态: frozen | draft-frozen | **frozen**
+> 版本: v1.1
+> 最后更新: 2026-06-26
 > 由 Arch Loop 产出，Code Loop 消费。
+
+## v1.1 变更说明
+
+本次为 **bugfix 迭代**，对应 PRD v1.1 的 BF-1/BF-2/BF-3。技术改动：
+- BF-1: 纯前端修复，`index.html` 中邮件开关三个函数从 `refresh()` 局部作用域提到全局作用域。后端无改动。
+- BF-2: 新增 `FluctuationConfigEntity` + `FluctuationConfigRepository` 持久化波段规则；`TimeWindowFluctuationMonitor` 启动从数据库加载、`updateConfig` 同步写库；默认规则改为 3 分钟>=3% OR 5 分钟>=5%。`application.yml` 静态值仅作首启种子。
+- BF-3: `TradingSignalScanner` 新增首扫初始化标志，首次扫描用已知信号填充 `notifiedKeys`（仅入 ring buffer 展示、不发邮件），后续仅新增信号触发邮件。MA 告警路径 (`CrossoverDetector` 首次观测返回 null) 已正确处理首启抑制，无需改动。
 
 ## 技术栈
 
@@ -58,6 +65,13 @@ AutoTradingSystem/
 │   │   │       ├── MAEvent.java
 │   │   │       ├── PriceAlert.java
 │   │   │       └── StockInfo.java
+│   │   │       └── (Direction.java)
+│   │   ├── entity/
+│   │   │   ├── AlertRecord.java
+│   │   │   └── FluctuationConfigEntity.java   # v1.1 BF-2 波段规则持久化
+│   │   ├── repository/
+│   │   │   ├── AlertRecordRepository.java
+│   │   │   └── FluctuationConfigRepository.java # v1.1 BF-2
 │   │   └── resources/
 │   │       ├── application.yml
 │   │       └── logback-spring.xml
@@ -119,6 +133,16 @@ AutoTradingSystem/
 
 ### TradingSession
 枚举值: `PRE_MARKET`, `REGULAR`, `AFTER_HOURS`, `OVERNIGHT`, `CLOSED`
+
+### FluctuationConfigEntity (v1.1 BF-2)
+单例行 (id 恒为 1)，持久化波段监控规则。
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 恒为 1（单例） |
+| logic | String | 规则组合逻辑 OR / AND |
+| rulesJson | String | 规则列表 JSON，如 `[{"windowMinutes":3,"thresholdPercent":3.0},{"windowMinutes":5,"thresholdPercent":5.0}]` |
+
+启动时 `TimeWindowFluctuationMonitor` 从该行加载；库为空时写入默认种子 (3min>=3% OR 5min>=5%)；`updateConfig` 同步覆写该行。`GET/POST /api/fluctuation-config` 读写均经 monitor 走数据库，刷新/重启后页面显示库中最新值，删空保存后不回退默认。
 
 ## 服务层约定
 
@@ -207,6 +231,12 @@ AutoTradingSystem/
 - 分组拉取的股票过滤逻辑（按 group-name 配置）
 
 ## 验收标准
+
+### v1.1 Bugfix 验收（BF-1/BF-2/BF-3）
+- [ ] BF-1: 点击首页邮件开关可切换开启/关闭三态；未配置时不可点
+- [ ] BF-2: 首启默认 3min>=3% OR 5min>=5%；保存入库；刷新/重启后显示库中最新值；删空保存不回退默认
+- [ ] BF-3: 首次扫描不发买卖点邮件；仅实时新信号触发邮件；重启不补发历史 MA 告警
+- [ ] v1.1 新增/修改代码不影响 v1.0 主流程（连接/重连/订阅/MA计算）
 
 - [ ] mvn compile 编译通过
 - [ ] mvn test 单元测试通过
