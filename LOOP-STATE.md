@@ -3,11 +3,11 @@
 > 全局协调状态文件。各阶段 loop 读取此文件获取全局上下文，写入跨阶段信号。
 
 Last run: 2026-06-26T08:20:00Z
-Current phase: test
+Current phase: idle
 Paused: false
 
 ## Active Loops
-- futu-stock-monitor: v1.1 bugfix cycle in progress (PRD done → Design done → Arch next)
+- futu-stock-monitor: v1.1 bugfix cycle COMPLETE (PRD→Design→Arch→Code→Test→Regression all done)
 
 ## Frozen Artifacts
 - docs/PRD.md (v1.1 — bugfix: BF-1/BF-2/BF-3)
