@@ -36,12 +36,15 @@ public class AsyncRequestBridge {
      * If no future is registered yet (response arrived early), caches it.
      */
     public void complete(int serialNo, Object response) {
-        responseCache.put(serialNo, response);
         CompletableFuture<Object> future = pending.remove(serialNo);
         if (future != null) {
+            // await() is already waiting: complete the future directly.
+            // Do NOT cache — await() returns via future.get() and never
+            // touches responseCache, so caching here would leak memory.
             future.complete(response);
         } else {
-            log.debug("Response cached for early serial: {}", serialNo);
+            // Response arrived before await(): cache for await() to retrieve.
+            responseCache.put(serialNo, response);
         }
     }
 

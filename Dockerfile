@@ -11,7 +11,7 @@ COPY target/futu-stock-monitor-*.jar app.jar
 
 RUN mkdir -p /app/logs
 
-ENV JAVA_OPTS="-Xms256m -Xmx512m -Duser.timezone=Asia/Shanghai"
+ENV JAVA_OPTS="-Xms256m -Xmx768m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Duser.timezone=Asia/Shanghai"
 ENV OPEND_IP="127.0.0.1"
 ENV OPEND_PORT="11111"
 

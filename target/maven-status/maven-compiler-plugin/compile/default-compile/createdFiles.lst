@@ -15,6 +15,7 @@ com/autotrading/futu/FutuConnHandler.class
 com/autotrading/notification/NotificationTemplate.class
 com/autotrading/futu/AsyncRequestBridge$FutuRequestException.class
 com/autotrading/monitor/AlertCoordinator$RecentAlert.class
+com/autotrading/market/TradingSignalService$BarCtx.class
 com/autotrading/futu/AsyncRequestBridge$FutuConnectionException.class
 com/autotrading/market/SnapshotPollingService.class
 com/autotrading/startup/ApplicationStartupRunner.class
