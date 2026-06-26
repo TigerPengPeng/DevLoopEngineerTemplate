@@ -277,6 +277,37 @@ public class NotificationTemplate {
     }
 
 
+
+    // ---- Trading Signal ----
+
+    public static String signalSubject(com.autotrading.monitor.TradingSignalScanner.SignalRecord rec) {
+        String action = "BUY".equals(rec.signalType()) ? "买入信号" : "卖出信号";
+        return "[买卖点] " + rec.stockName() + "(" + rec.stockKey() + ") " + action + " - " + rec.strategy();
+    }
+
+    public static String signalBody(com.autotrading.monitor.TradingSignalScanner.SignalRecord rec) {
+        boolean isBuy = "BUY".equals(rec.signalType());
+        String color = isBuy ? GREEN : RED;
+        String action = isBuy ? "买入信号" : "卖出信号";
+        String[] parts = rec.stockKey().split("\\.");
+        String marketLabel = "未知";
+        try { marketLabel = marketLabel(parts.length > 0 ? Integer.parseInt(parts[0]) : 0); } catch (Exception e) {}
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2 style=\"color:").append(color).append("\">")
+          .append(action).append(" - ").append(rec.strategy()).append("</h2>");
+        sb.append("<table style=\"border-collapse:collapse;width:100%;font-size:14px\">");
+        sb.append(row("股票", rec.stockName() + " (" + rec.stockKey() + ")"));
+        sb.append(colorRow("信号类型", action, color));
+        sb.append(row("策略", rec.strategy()));
+        sb.append(row("当前价", formatPrice(rec.price())));
+        sb.append(row("信号日期", rec.signalDate()));
+        sb.append(row("分析原因", rec.reason()));
+        sb.append(row("市场", marketLabel));
+        sb.append(row("时间", TS_FMT.format(new Date(rec.timestamp()))));
+        sb.append("</table>");
+        return htmlWrap(sb.toString());
+    }
     private static String htmlWrap(String body) {
         return "<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto\">" +
                 body +

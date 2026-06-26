@@ -100,6 +100,12 @@ public class EmailNotificationService {
         sendHtml("行业趋势", subject, body);
     }
 
+    @Async("emailExecutor")
+    public void sendSignalAlert(String subject, String body) {
+        if (!configured) return;
+        sendHtml("买卖点", subject, body);
+    }
+
     private void sendHtml(String type, String subject, String htmlBody) {
         List<String> recipients = properties.getTo();
         log.info("Sending email to {} recipient(s): {}", recipients.size(), recipients);

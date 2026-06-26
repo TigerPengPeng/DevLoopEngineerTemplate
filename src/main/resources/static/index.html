@@ -283,12 +283,14 @@
 <div class="section">
   <div class="section-header">
     <div style="display:flex;gap:0;align-items:center">
-      <button class="tab-btn active" id="tab-ma" onclick="switchTab('ma')">MA 告警</button>
+      <button class="tab-btn active" id="tab-signal" onclick="switchTab('signal')">买卖点通知</button>
+      <button class="tab-btn" id="tab-ma" onclick="switchTab('ma')">MA 告警</button>
       <button class="tab-btn" id="tab-email" onclick="switchTab('email')">邮件通知</button>
     </div>
     <span class="count" id="alert-count"></span>
   </div>
-  <div class="alerts-list" id="alerts-list"></div>
+  <div class="alerts-list" id="signal-list"></div>
+  <div class="alerts-list" id="alerts-list" style="display:none"></div>
   <div class="alerts-list" id="email-list" style="display:none"></div>
 </div>
 <script>
@@ -491,14 +493,48 @@ function renderAlerts(alerts) {
 
 async function refresh() {
 
-let currentTab = 'ma';
+let currentTab = 'signal';
 
 function switchTab(tab) {
   currentTab = tab;
+  document.getElementById('tab-signal').classList.toggle('active', tab === 'signal');
   document.getElementById('tab-ma').classList.toggle('active', tab === 'ma');
   document.getElementById('tab-email').classList.toggle('active', tab === 'email');
+  document.getElementById('signal-list').style.display = tab === 'signal' ? '' : 'none';
   document.getElementById('alerts-list').style.display = tab === 'ma' ? '' : 'none';
   document.getElementById('email-list').style.display = tab === 'email' ? '' : 'none';
+}
+
+function renderSignalRecords(signals) {
+  if (signals.length === 0) {
+    document.getElementById('signal-list').innerHTML =
+      '<div class="empty-state">暂无买卖点信号。系统会自动扫描符合量价买卖策略的股票。</div>';
+    if (currentTab === 'signal') {
+      document.getElementById('alert-count').textContent = '0 signals';
+    }
+    return;
+  }
+  if (currentTab === 'signal') {
+    document.getElementById('alert-count').textContent = signals.length + ' signals';
+  }
+  let items = signals.map(function(s) {
+    var isBuy = s.signalType === 'BUY';
+    var pillClass = isBuy ? 'green' : 'red';
+    var label = isBuy ? '买入' : '卖出';
+    return '<div class="alert-item">' +
+      '<span class="alert-time">' + fmtTime(s.timestamp) + '</span>' +
+      '<span>' +
+        '<span class="alert-stock">' + (s.stockName || s.stockKey) + '</span>' +
+        '<span class="alert-detail" style="margin-left:8px">' +
+          '<span class="pill ' + pillClass + '">' + label + '</span> ' +
+          s.strategy + ' <span style="color:var(--text-dim);font-size:12px">' + s.reason + '</span>' +
+        '</span>' +
+      '</span>' +
+      '<span class="alert-price">' + fmtPrice(s.price) + '</span>' +
+      '<span class="alert-time">' + s.signalDate + '</span>' +
+    '</div>';
+  }).join('');
+  document.getElementById('signal-list').innerHTML = items;
 }
 
 function renderEmailHistory(emails) {
@@ -541,6 +577,7 @@ function renderEmailHistory(emails) {
       'Updated ' + fmtFullTime(Date.now());
     renderCards(d);
     renderStocks(d.stocks || []);
+    renderSignalRecords(d.signalRecords || []);
     renderAlerts(d.recentAlerts || []);
     renderEmailHistory(d.emailHistory || []);
   } catch (e) {

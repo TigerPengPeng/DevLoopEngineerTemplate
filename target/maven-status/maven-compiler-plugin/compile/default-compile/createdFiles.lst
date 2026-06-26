@@ -23,6 +23,7 @@ com/autotrading/futu/AsyncRequestBridge$FutuRequestException.class
 com/autotrading/monitor/AlertCoordinator$RecentAlert.class
 com/autotrading/config/FutuProperties$MaScan.class
 com/autotrading/market/SectorTrendReportService$SectorAnalysis.class
+com/autotrading/monitor/TradingSignalScanner$SignalRecord.class
 com/autotrading/market/TradingSignalService$BarCtx.class
 com/autotrading/futu/AsyncRequestBridge$FutuConnectionException.class
 com/autotrading/market/SnapshotPollingService.class
@@ -32,6 +33,7 @@ com/autotrading/web/ErrorLogController.class
 com/autotrading/market/SectorTrendReportService$SectorTrendReport.class
 com/autotrading/startup/ApplicationStartupRunner.class
 com/autotrading/web/StockRefreshController.class
+com/autotrading/monitor/TradingSignalScanner.class
 com/autotrading/futu/AsyncRequestBridge.class
 com/autotrading/model/TradingSession.class
 com/autotrading/monitor/MACrossoverMonitor.class
