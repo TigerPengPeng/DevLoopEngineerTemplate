@@ -213,7 +213,8 @@
     Futu Stock Monitor
   </h1>
   <div class="header-right">
-    <button class="btn" id="refresh-btn" onclick="manualRefresh()">
+    <a href="/sector-trend.html" class="btn" style="text-decoration:none">行业趋势</a>
+    <a href="/error-logs.html" class="btn" style="text-decoration:none">错误日志</a>    <button class="btn" id="refresh-btn" onclick="manualRefresh()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
       <span id="refresh-label">Refresh</span>
     </button>
@@ -229,6 +230,28 @@
     <span class="count" id="stock-count"></span>
   </div>
   <div id="stock-table-wrap"></div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <span>监控配置</span>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="reloadStocks()" id="reload-stocks-btn">刷新股票列表</button>
+      <button class="btn" onclick="triggerMAScan()" id="ma-scan-btn">MA破位扫描</button>
+    </div>
+  </div>
+  <div style="padding:16px">
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:12px;color:var(--text-dim)">波段规则逻辑</span>
+      <select id="fluc-logic" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px">
+        <option value="OR">OR (任一满足)</option>
+        <option value="AND">AND (全部满足)</option>
+      </select>
+      <button class="btn" onclick="saveFluctuationConfig()">保存规则</button>
+    </div>
+    <div id="fluc-rules"></div>
+    <button class="btn" style="margin-top:8px" onclick="addFlucRule()">+ 添加规则</button>
+  </div>
 </div>
 
 <div class="section">
@@ -268,6 +291,68 @@ function sessionPillClass(session) {
     case '夜盘': return 'pill session-overnight';
     default: return 'pill session-closed';
   }
+}
+
+let flucRules = [];
+
+async function reloadStocks() {
+  const btn = document.getElementById('reload-stocks-btn');
+  btn.disabled = true; btn.textContent = '刷新中...';
+  try {
+    const resp = await fetch('/api/refresh-stocks', { method: 'POST' });
+    const r = await resp.json();
+    btn.textContent = r.stockCount + ' stocks loaded';
+    await refresh();
+  } catch(e) { btn.textContent = 'Error'; }
+  setTimeout(function() { btn.disabled = false; btn.textContent = '刷新股票列表'; }, 3000);
+}
+
+async function triggerMAScan() {
+  const btn = document.getElementById('ma-scan-btn');
+  btn.disabled = true; btn.textContent = '扫描中...';
+  try {
+    const resp = await fetch('/api/ma-scan', { method: 'POST' });
+    const r = await resp.json();
+    btn.textContent = r.brokenStocks + ' stocks below MA';
+  } catch(e) { btn.textContent = 'Error'; }
+  setTimeout(function() { btn.disabled = false; btn.textContent = 'MA破位扫描'; }, 3000);
+}
+
+async function loadFluctuationConfig() {
+  try {
+    const resp = await fetch('/api/fluctuation-config');
+    const cfg = await resp.json();
+    flucRules = cfg.rules || [];
+    document.getElementById('fluc-logic').value = cfg.logic || 'OR';
+    renderFlucRules();
+  } catch(e) {}
+}
+
+function renderFlucRules() {
+  document.getElementById('fluc-rules').innerHTML = flucRules.map(function(r, i) {
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+      '<input type="number" value="' + r.windowMinutes + '" min="1" max="120" style="width:60px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px" onchange="flucRules[' + i + '].windowMinutes=parseInt(this.value)">' +
+      '<span style="color:var(--text-dim);font-size:12px">分钟内波动 >=</span>' +
+      '<input type="number" value="' + r.thresholdPercent + '" min="0.1" step="0.1" style="width:60px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px" onchange="flucRules[' + i + '].thresholdPercent=parseFloat(this.value)">' +
+      '<span style="color:var(--text-dim);font-size:12px">%</span>' +
+      '<button class="btn" style="padding:2px 8px" onclick="flucRules.splice(' + i + ',1);renderFlucRules()">删除</button>' +
+      '</div>';
+  }).join('');
+}
+
+function addFlucRule() {
+  flucRules.push({ windowMinutes: 5, thresholdPercent: 3.0 });
+  renderFlucRules();
+}
+
+async function saveFluctuationConfig() {
+  const logic = document.getElementById('fluc-logic').value;
+  try {
+    await fetch('/api/fluctuation-config', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ logic: logic, rules: flucRules })
+    });
+  } catch(e) {}
 }
 
 async function manualRefresh() {
@@ -391,7 +476,7 @@ async function refresh() {
 }
 
 refresh();
-setInterval(refresh, 5000);
+loadFluctuationConfig();setInterval(refresh, 5000);
 </script>
 
 </body>

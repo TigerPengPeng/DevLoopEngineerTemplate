@@ -1,9 +1,7 @@
 package com.autotrading.startup;
 
 import com.autotrading.futu.QuoteUpdateListener;
-import com.autotrading.market.KLineService;
 import com.autotrading.market.MarketSessionService;
-import com.autotrading.market.QuoteSubscriptionService;
 import com.autotrading.model.MAEvent;
 import com.autotrading.model.PriceAlert;
 import com.autotrading.model.StockInfo;
@@ -11,6 +9,7 @@ import com.autotrading.model.TradingSession;
 import com.autotrading.monitor.AlertCoordinator;
 import com.autotrading.monitor.MACrossoverMonitor;
 import com.autotrading.monitor.PriceFluctuationMonitor;
+import com.autotrading.monitor.TimeWindowFluctuationMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -33,6 +32,7 @@ public class QuoteProcessor implements QuoteUpdateListener {
     private final MACrossoverMonitor maMonitor;
     private final AlertCoordinator alertCoordinator;
     private final MarketSessionService sessionService;
+    private final TimeWindowFluctuationMonitor fluctuationMonitor;
 
     /** stockKey -> StockInfo (for display names and market info). */
     private final Map<String, StockInfo> stockRegistry = new ConcurrentHashMap<>();
@@ -43,11 +43,13 @@ public class QuoteProcessor implements QuoteUpdateListener {
     private volatile boolean monitoring = false;
 
     public QuoteProcessor(PriceFluctuationMonitor priceMonitor, MACrossoverMonitor maMonitor,
-                           AlertCoordinator alertCoordinator, MarketSessionService sessionService) {
+                           AlertCoordinator alertCoordinator, MarketSessionService sessionService,
+                           TimeWindowFluctuationMonitor fluctuationMonitor) {
         this.priceMonitor = priceMonitor;
         this.maMonitor = maMonitor;
         this.alertCoordinator = alertCoordinator;
         this.sessionService = sessionService;
+        this.fluctuationMonitor = fluctuationMonitor;
     }
 
     public void registerStocks(List<StockInfo> stocks) {
@@ -66,6 +68,11 @@ public class QuoteProcessor implements QuoteUpdateListener {
     public void onQuoteUpdate(String stockKey, String stockName, double curPrice, double preClose) {
         // Always cache the latest price (even before monitoring is fully enabled)
         latestPrices.put(stockKey, new PriceSnapshot(curPrice, preClose, System.currentTimeMillis()));
+
+        // Record price tick for time-windowed fluctuation monitoring
+        if (curPrice > 0) {
+            fluctuationMonitor.recordPrice(stockKey, curPrice, System.currentTimeMillis());
+        }
 
         if (!monitoring) {
             return;

@@ -1,5 +1,6 @@
 package com.autotrading;
 
+import com.autotrading.monitor.ErrorLogAppender;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +20,8 @@ import java.util.concurrent.Executor;
 public class AutoTradingApplication {
 
     public static void main(String[] args) {
+        // Register the in-memory ERROR log capture appender before Spring starts
+        ErrorLogAppender.register();
         SpringApplication.run(AutoTradingApplication.class, args);
     }
 

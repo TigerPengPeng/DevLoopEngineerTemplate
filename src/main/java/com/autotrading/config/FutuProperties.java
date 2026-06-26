@@ -3,6 +3,7 @@ package com.autotrading.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -16,6 +17,8 @@ public class FutuProperties {
     private Filter filter = new Filter();
     private Monitor monitor = new Monitor();
     private Reconnect reconnect = new Reconnect();
+    private Fluctuation fluctuation = new Fluctuation();
+    private MaScan maScan = new MaScan();
 
     public Opend getOpend() { return opend; }
     public void setOpend(Opend opend) { this.opend = opend; }
@@ -25,6 +28,10 @@ public class FutuProperties {
     public void setMonitor(Monitor monitor) { this.monitor = monitor; }
     public Reconnect getReconnect() { return reconnect; }
     public void setReconnect(Reconnect reconnect) { this.reconnect = reconnect; }
+    public Fluctuation getFluctuation() { return fluctuation; }
+    public void setFluctuation(Fluctuation fluctuation) { this.fluctuation = fluctuation; }
+    public MaScan getMaScan() { return maScan; }
+    public void setMaScan(MaScan maScan) { this.maScan = maScan; }
 
     public static class Opend {
         private String ip = "127.0.0.1";
@@ -82,5 +89,60 @@ public class FutuProperties {
         public void setMaxDelayMs(long v) { this.maxDelayMs = v; }
         public double getMultiplier() { return multiplier; }
         public void setMultiplier(double v) { this.multiplier = v; }
+    }
+
+    /**
+     * Time-windowed fluctuation monitoring rules.
+     * Multiple rules can be combined with AND or OR logic.
+     */
+    public static class Fluctuation {
+        /** Logic operator for combining rules: "OR" (any match) or "AND" (all must match). */
+        private String logic = "OR";
+        /** Rules: each defines a time window (minutes) and threshold percent. */
+        private List<FluctuationRule> rules = new ArrayList<>(List.of(
+                new FluctuationRule(3, 3.0),
+                new FluctuationRule(5, 3.0),
+                new FluctuationRule(10, 3.0)
+        ));
+        /** Batch evaluation interval in ms. */
+        private long evalIntervalMs = 30000;
+
+        public String getLogic() { return logic; }
+        public void setLogic(String logic) { this.logic = logic; }
+        public List<FluctuationRule> getRules() { return rules; }
+        public void setRules(List<FluctuationRule> rules) { this.rules = rules; }
+        public long getEvalIntervalMs() { return evalIntervalMs; }
+        public void setEvalIntervalMs(long v) { this.evalIntervalMs = v; }
+    }
+
+    public static class FluctuationRule {
+        private int windowMinutes;
+        private double thresholdPercent;
+
+        public FluctuationRule() {}
+
+        public FluctuationRule(int windowMinutes, double thresholdPercent) {
+            this.windowMinutes = windowMinutes;
+            this.thresholdPercent = thresholdPercent;
+        }
+
+        public int getWindowMinutes() { return windowMinutes; }
+        public void setWindowMinutes(int v) { this.windowMinutes = v; }
+        public double getThresholdPercent() { return thresholdPercent; }
+        public void setThresholdPercent(double v) { this.thresholdPercent = v; }
+    }
+
+    /**
+     * Scheduled MA breakdown scan: checks which stocks are below any configured MA.
+     */
+    public static class MaScan {
+        /** Cron expressions for scan times, e.g. ["0 0 10,14 * * MON-FRI"]. */
+        private List<String> cronTimes = new ArrayList<>(List.of(
+                "0 0 10,14 * * MON-FRI",
+                "0 0 22 * * MON-FRI"
+        ));
+
+        public List<String> getCronTimes() { return cronTimes; }
+        public void setCronTimes(List<String> v) { this.cronTimes = v; }
     }
 }

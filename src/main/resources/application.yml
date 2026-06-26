@@ -35,7 +35,16 @@ futu:
     initial-delay-ms: ${RECONNECT_INITIAL_DELAY_MS:5000}
     max-delay-ms: ${RECONNECT_MAX_DELAY_MS:60000}
     multiplier: ${RECONNECT_MULTIPLIER:2.0}
-
+  fluctuation:
+    logic: ${FLUCTUATION_LOGIC:OR}
+    eval-interval-ms: ${FLUCTUATION_EVAL_INTERVAL:30000}
+    rules:
+      - window-minutes: 3
+        threshold-percent: 3.0
+      - window-minutes: 5
+        threshold-percent: 3.0
+      - window-minutes: 10
+        threshold-percent: 3.0
 notification:
   mail:
     from: ${MAIL_FROM:}

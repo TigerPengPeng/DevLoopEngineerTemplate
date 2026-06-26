@@ -77,7 +77,7 @@ public class ApplicationStartupRunner {
             return;
         }
 
-        initializeMonitoring();
+        reloadStocks();
     }
 
     private boolean waitForConnection() {
@@ -95,14 +95,18 @@ public class ApplicationStartupRunner {
         return connectionManager.isReady();
     }
 
-    private void initializeMonitoring() {
+    /**
+     * Reloads the stock list from Futu OpenD. Called at startup and from /api/refresh-stocks.
+     * Returns the number of stocks loaded.
+     */
+    public int reloadStocks() {
         try {
             // Step 1: Fetch stocks
             log.info("[1/4] Fetching stock groups...");
             monitoredStocks = stockGroupService.resolveTargetStocks();
             if (monitoredStocks.isEmpty()) {
                 log.warn("No stocks to monitor. Add stocks to a Futu group and restart.");
-                return;
+                return 0;
             }
             log.info("[1/4] Found {} stocks to monitor", monitoredStocks.size());
 
@@ -135,10 +139,10 @@ public class ApplicationStartupRunner {
             // Enable event processing
             quoteProcessor.setMonitoring(true);
             log.info("=== Monitoring started for {} stocks ===", monitoredStocks.size());
-
+            return monitoredStocks.size();
         } catch (Exception e) {
             log.error("Monitoring initialization failed: {}", e.getMessage(), e);
-        }
+            return 0;        }
     }
 
     /**

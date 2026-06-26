@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>错误日志 - Futu Stock Monitor</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --red: #f85149;
+    --blue: #58a6ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 20px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--blue); }
+  .log-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+  }
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .log-time {
+    color: var(--text-dim);
+    font-family: "SF Mono", "Cascadia Code", monospace;
+    font-size: 12px;
+  }
+  .log-logger {
+    color: var(--blue);
+    font-family: "SF Mono", "Cascadia Code", monospace;
+    font-size: 11px;
+  }
+  .log-msg {
+    color: var(--text);
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .log-trace {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: "SF Mono", "Cascadia Code", monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 6px;
+  }
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>系统错误日志</h1>
+  <div style="display:flex;gap:12px">
+    <a href="/" class="btn">返回主页</a>
+    <button class="btn" onclick="clearLogs()">清空日志</button>
+    <button class="btn" onclick="loadLogs()">刷新</button>
+  </div>
+</div>
+
+<div id="logs-container"></div>
+
+<script>
+async function loadLogs() {
+  try {
+    const resp = await fetch('/api/error-logs?limit=100');
+    const d = await resp.json();
+    renderLogs(d.logs || []);
+  } catch(e) {
+    document.getElementById('logs-container').innerHTML =
+      '<div class="empty-state">加载失败: ' + e.message + '</div>';
+  }
+}
+
+function renderLogs(logs) {
+  if (logs.length === 0) {
+    document.getElementById('logs-container').innerHTML =
+      '<div class="empty-state">暂无错误日志</div>';
+    return;
+  }
+  document.getElementById('logs-container').innerHTML = logs.map(function(l) {
+    let html = '<div class="log-entry">' +
+      '<div class="log-header">' +
+      '<span class="log-time">' + new Date(l.timestamp).toLocaleString('zh-CN') + '</span>' +
+      '<span class="log-logger">[' + l.thread + '] ' + l.logger + '</span>' +
+      '</div>' +
+      '<div class="log-msg">' + escapeHtml(l.message) + '</div>';
+    if (l.stackTrace && l.stackTrace.length > 0) {
+      html += '<div class="log-trace">' + escapeHtml(l.stackTrace) + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function clearLogs() {
+  try {
+    await fetch('/api/error-logs', { method: 'DELETE' });
+    loadLogs();
+  } catch(e) {}
+}
+
+loadLogs();
+setInterval(loadLogs, 10000);
+</script>
+
+</body>
+</html>

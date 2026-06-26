@@ -4,7 +4,8 @@ import com.autotrading.config.NotificationProperties;
 import com.autotrading.market.RiskAssessmentService;
 import com.autotrading.model.MAEvent;
 import com.autotrading.model.PriceAlert;
-import jakarta.annotation.PostConstruct;
+import com.autotrading.monitor.TimeWindowFluctuationMonitor;
+import com.autotrading.market.SectorTrendReportService;import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -81,6 +82,29 @@ public class EmailNotificationService {
         sendHtml(subject, body);
     }
 
+    @Async("emailExecutor")
+    public void sendFluctuationBatch(String subject, String timeStr, String logic,
+                                       List<TimeWindowFluctuationMonitor.StockFluctuationResult> results) {
+        if (!configured) return;
+        String body = NotificationTemplate.fluctuationBatchBody(timeStr, logic, results);
+        sendHtml(subject, body);
+    }
+
+    @Async("emailExecutor")
+    public void sendMABreakdownReport(String subject, String timeStr,
+                                       List<NotificationTemplate.MABreakdownItem> items) {
+        if (!configured) return;
+        String body = NotificationTemplate.maBreakdownBody(timeStr, items);
+        sendHtml(subject, body);
+    }
+
+
+    @Async("emailExecutor")
+    public void sendSectorTrendReport(String subject, SectorTrendReportService.SectorTrendReport report) {
+        if (!configured) return;
+        String body = NotificationTemplate.sectorTrendBody(report);
+        sendHtml(subject, body);
+    }
     private void sendHtml(String subject, String htmlBody) {
         List<String> recipients = properties.getTo();
         log.info("Sending email to {} recipient(s): {}", recipients.size(), recipients);
@@ -95,8 +119,6 @@ public class EmailNotificationService {
                 mailSender.send(message);
                 log.info("Email sent successfully (to={}, subject={})", to, subject);
             } catch (Throwable t) {
-                // Catch Throwable (not just Exception): classpath mismatches can
-                // throw NoSuchMethodError / NoClassDefFoundError which extend Error
                 log.error("Email send FAILED (to={}, subject={}): {}", to, subject, t.getMessage(), t);
             }
         }
