@@ -39,9 +39,11 @@ com/autotrading/futu/FutuConnectionManager.class
 com/autotrading/monitor/AlertCoordinator.class
 com/autotrading/monitor/TimeWindowFluctuationMonitor$RuleMatch.class
 com/autotrading/monitor/FluctuationAlertScheduler.class
+com/autotrading/notification/EmailHistoryService$EmailRecord.class
 com/autotrading/monitor/SectorTrendReportScheduler.class
 com/autotrading/monitor/TimeWindowFluctuationMonitor.class
 com/autotrading/futu/FutuQuoteHandler.class
+com/autotrading/notification/EmailHistoryService.class
 com/autotrading/config/FutuProperties$Reconnect.class
 com/autotrading/web/StatusController.class
 com/autotrading/monitor/MABreakdownScanner.class

@@ -122,7 +122,7 @@
   .pill.blue { background: rgba(88,166,255,0.15); color: var(--blue); }
   .pill.yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
   .pill.dim { background: rgba(139,148,158,0.15); color: var(--text-dim); }
-  .pill.session-regular { background: rgba(63,185,80,0.15); color: var(--green); }
+  .pill.orange { background: rgba(234,88,12,0.15); color: #ea580c; }  .pill.session-regular { background: rgba(63,185,80,0.15); color: var(--green); }
   .pill.session-pre { background: rgba(210,153,34,0.15); color: var(--yellow); }
   .pill.session-after { background: rgba(188,140,255,0.15); color: var(--purple); }
   .pill.session-overnight { background: rgba(188,140,255,0.15); color: var(--purple); }
@@ -176,6 +176,32 @@
     text-align: center;
     color: var(--text-dim);
   }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--text);
+    border-bottom-color: var(--accent, #3b82f6);
+  }
+  .email-item {
+    display: grid;
+    grid-template-columns: 70px 70px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .email-item:last-child { border-bottom: none; }
   .alerts-list { padding: 4px 0; }
   .alert-item {
     display: grid;
@@ -256,12 +282,15 @@
 
 <div class="section">
   <div class="section-header">
-    <span>Recent Alerts</span>
+    <div style="display:flex;gap:0;align-items:center">
+      <button class="tab-btn active" id="tab-ma" onclick="switchTab('ma')">MA 告警</button>
+      <button class="tab-btn" id="tab-email" onclick="switchTab('email')">邮件通知</button>
+    </div>
     <span class="count" id="alert-count"></span>
   </div>
   <div class="alerts-list" id="alerts-list"></div>
+  <div class="alerts-list" id="email-list" style="display:none"></div>
 </div>
-
 <script>
 function fmtPrice(v) {
   if (v === null || v === undefined) return '--';
@@ -436,7 +465,7 @@ function renderStocks(stocks) {
 }
 
 function renderAlerts(alerts) {
-  document.getElementById('alert-count').textContent = alerts.length + ' events';
+  if (currentTab === 'ma') { document.getElementById('alert-count').textContent = alerts.length + ' events'; }
   if (alerts.length === 0) {
     document.getElementById('alerts-list').innerHTML =
       '<div class="empty-state">No alerts yet. Events will appear here when triggered.</div>';
@@ -461,6 +490,50 @@ function renderAlerts(alerts) {
 }
 
 async function refresh() {
+
+let currentTab = 'ma';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-ma').classList.toggle('active', tab === 'ma');
+  document.getElementById('tab-email').classList.toggle('active', tab === 'email');
+  document.getElementById('alerts-list').style.display = tab === 'ma' ? '' : 'none';
+  document.getElementById('email-list').style.display = tab === 'email' ? '' : 'none';
+}
+
+function renderEmailHistory(emails) {
+  if (emails.length === 0) {
+    document.getElementById('email-list').innerHTML =
+      '<div class="empty-state">暂无邮件记录。触发告警后发送的邮件会在此显示。</div>';
+    if (currentTab === 'email') {
+      document.getElementById('alert-count').textContent = '0 emails';
+    }
+    return;
+  }
+  if (currentTab === 'email') {
+    document.getElementById('alert-count').textContent = emails.length + ' emails';
+  }
+  const typeColor = {
+    'MA告警': 'yellow',
+    '波动告警': 'red',
+    'MA破位': 'orange',
+    '风险报告': 'red',
+    '行业趋势': 'blue'
+  };
+  let items = emails.map(function(e) {
+    const tc = typeColor[e.type] || 'dim';
+    const statusPill = e.success
+      ? '<span class="pill green">成功</span>'
+      : '<span class="pill red">失败</span>';
+    return '<div class="email-item">' +
+      '<span class="alert-time">' + fmtTime(e.timestamp) + '</span>' +
+      '<span class="pill ' + tc + '">' + e.type + '</span>' +
+      '<span style="color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + e.subject + '</span>' +
+      statusPill +
+    '</div>';
+  }).join('');
+  document.getElementById('email-list').innerHTML = items;
+}
   try {
     const resp = await fetch('/api/status');
     const d = await resp.json();
@@ -469,6 +542,7 @@ async function refresh() {
     renderCards(d);
     renderStocks(d.stocks || []);
     renderAlerts(d.recentAlerts || []);
+    renderEmailHistory(d.emailHistory || []);
   } catch (e) {
     document.getElementById('conn-dot').className = 'status-dot down';
     document.getElementById('update-time').textContent = 'Fetch failed: ' + e.message;

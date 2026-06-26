@@ -8,6 +8,7 @@ import com.autotrading.market.SnapshotPollingService;
 import com.autotrading.model.StockInfo;
 import com.autotrading.startup.QuoteProcessor;
 import com.autotrading.monitor.AlertCoordinator;
+import com.autotrading.notification.EmailHistoryService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,6 +32,7 @@ public class StatusController {
     private final KLineService kLineService;
     private final MarketSessionService marketSessionService;
     private final AlertCoordinator alertCoordinator;
+    private final EmailHistoryService emailHistoryService;
     private final SnapshotPollingService snapshotPollingService;
 
     public StatusController(FutuConnectionManager connectionManager,
@@ -39,6 +41,7 @@ public class StatusController {
                             KLineService kLineService,
                             MarketSessionService marketSessionService,
                             AlertCoordinator alertCoordinator,
+                            EmailHistoryService emailHistoryService,
                             SnapshotPollingService snapshotPollingService) {
         this.connectionManager = connectionManager;
         this.properties = properties;
@@ -46,6 +49,7 @@ public class StatusController {
         this.kLineService = kLineService;
         this.marketSessionService = marketSessionService;
         this.alertCoordinator = alertCoordinator;
+        this.emailHistoryService = emailHistoryService;
         this.snapshotPollingService = snapshotPollingService;
     }
 
@@ -103,6 +107,7 @@ public class StatusController {
 
         // Recent alerts
         root.put("recentAlerts", alertCoordinator.getRecentAlerts());
+        root.put("emailHistory", emailHistoryService.getRecords());
 
         return root;
     }

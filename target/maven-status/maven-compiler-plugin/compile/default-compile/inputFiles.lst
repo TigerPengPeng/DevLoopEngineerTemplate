@@ -29,6 +29,7 @@
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/MACrossoverMonitor.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/SectorTrendReportScheduler.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/TimeWindowFluctuationMonitor.java
+/Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/notification/EmailHistoryService.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/notification/EmailNotificationService.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/notification/NotificationTemplate.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/startup/ApplicationStartupRunner.java

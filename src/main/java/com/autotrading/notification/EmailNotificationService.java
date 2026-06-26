@@ -4,7 +4,8 @@ import com.autotrading.config.NotificationProperties;
 import com.autotrading.market.RiskAssessmentService;
 import com.autotrading.model.MAEvent;
 import com.autotrading.monitor.TimeWindowFluctuationMonitor;
-import com.autotrading.market.SectorTrendReportService;import jakarta.annotation.PostConstruct;
+import com.autotrading.market.SectorTrendReportService;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -27,12 +28,15 @@ public class EmailNotificationService {
 
     private final JavaMailSender mailSender;
     private final NotificationProperties properties;
+    private final EmailHistoryService historyService;
 
     private volatile boolean configured = false;
 
-    public EmailNotificationService(JavaMailSender mailSender, NotificationProperties properties) {
+    public EmailNotificationService(JavaMailSender mailSender, NotificationProperties properties,
+                                     EmailHistoryService historyService) {
         this.mailSender = mailSender;
         this.properties = properties;
+        this.historyService = historyService;
     }
 
     @PostConstruct
@@ -56,7 +60,7 @@ public class EmailNotificationService {
         if (!configured) return;
         String subject = NotificationTemplate.maEventSubject(event);
         String body = NotificationTemplate.maEventBody(event);
-        sendHtml(subject, body);
+        sendHtml("MA告警", subject, body);
     }
 
     @Async("emailExecutor")
@@ -70,7 +74,7 @@ public class EmailNotificationService {
                         a.changeRate(), a.riskFactors()))
                 .toList();
         String body = NotificationTemplate.riskReportBody(marketLabel, dateStr, items);
-        sendHtml(subject, body);
+        sendHtml("风险报告", subject, body);
     }
 
     @Async("emailExecutor")
@@ -78,7 +82,7 @@ public class EmailNotificationService {
                                        List<TimeWindowFluctuationMonitor.StockFluctuationResult> results) {
         if (!configured) return;
         String body = NotificationTemplate.fluctuationBatchBody(timeStr, logic, results);
-        sendHtml(subject, body);
+        sendHtml("波动告警", subject, body);
     }
 
     @Async("emailExecutor")
@@ -86,17 +90,17 @@ public class EmailNotificationService {
                                        List<NotificationTemplate.MABreakdownItem> items) {
         if (!configured) return;
         String body = NotificationTemplate.maBreakdownBody(timeStr, items);
-        sendHtml(subject, body);
+        sendHtml("MA破位", subject, body);
     }
-
 
     @Async("emailExecutor")
     public void sendSectorTrendReport(String subject, SectorTrendReportService.SectorTrendReport report) {
         if (!configured) return;
         String body = NotificationTemplate.sectorTrendBody(report);
-        sendHtml(subject, body);
+        sendHtml("行业趋势", subject, body);
     }
-    private void sendHtml(String subject, String htmlBody) {
+
+    private void sendHtml(String type, String subject, String htmlBody) {
         List<String> recipients = properties.getTo();
         log.info("Sending email to {} recipient(s): {}", recipients.size(), recipients);
         for (String to : recipients) {
@@ -109,8 +113,10 @@ public class EmailNotificationService {
                 helper.setText(htmlBody, true);
                 mailSender.send(message);
                 log.info("Email sent successfully (to={}, subject={})", to, subject);
+                historyService.record(type, subject, to, true, null);
             } catch (Throwable t) {
                 log.error("Email send FAILED (to={}, subject={}): {}", to, subject, t.getMessage(), t);
+                historyService.record(type, subject, to, false, t.getMessage());
             }
         }
     }
