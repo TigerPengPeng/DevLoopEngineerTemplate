@@ -3,7 +3,6 @@ package com.autotrading.notification;
 import com.autotrading.config.NotificationProperties;
 import com.autotrading.market.RiskAssessmentService;
 import com.autotrading.model.MAEvent;
-import com.autotrading.model.PriceAlert;
 import com.autotrading.monitor.TimeWindowFluctuationMonitor;
 import com.autotrading.market.SectorTrendReportService;import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -57,14 +56,6 @@ public class EmailNotificationService {
         if (!configured) return;
         String subject = NotificationTemplate.maEventSubject(event);
         String body = NotificationTemplate.maEventBody(event);
-        sendHtml(subject, body);
-    }
-
-    @Async("emailExecutor")
-    public void sendPriceAlert(PriceAlert alert) {
-        if (!configured) return;
-        String subject = NotificationTemplate.priceAlertSubject(alert);
-        String body = NotificationTemplate.priceAlertBody(alert);
         sendHtml(subject, body);
     }
 

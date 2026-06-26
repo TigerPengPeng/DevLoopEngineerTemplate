@@ -2,7 +2,6 @@ package com.autotrading.notification;
 
 import com.autotrading.model.Direction;
 import com.autotrading.model.MAEvent;
-import com.autotrading.model.PriceAlert;
 import com.autotrading.model.TradingSession;
 import org.junit.jupiter.api.Test;
 
@@ -17,31 +16,10 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class NotificationTemplateTest {
 
-    private PriceAlert makePriceAlert() {
-        return new PriceAlert(
-                "11.MU", "Micron Technology", 125.50, 108.50,
-                15.74, Direction.UP, 3.0, TradingSession.OVERNIGHT);
-    }
-
     private MAEvent makeMAEvent() {
         return new MAEvent(
                 "11.MU", "Micron Technology", 5, Direction.BREAK_UP,
                 125.50, 122.00, TradingSession.OVERNIGHT);
-    }
-
-    @Test
-    void priceAlertSubject_doesNotThrow() {
-        String subject = NotificationTemplate.priceAlertSubject(makePriceAlert());
-        assertNotNull(subject);
-        assertTrue(subject.contains("MU"));
-    }
-
-    @Test
-    void priceAlertBody_doesNotThrow() {
-        String body = NotificationTemplate.priceAlertBody(makePriceAlert());
-        assertNotNull(body);
-        assertTrue(body.contains("Micron"));
-        assertTrue(body.contains("width:30%"));
     }
 
     @Test

@@ -2,7 +2,6 @@ package com.autotrading.notification;
 
 import com.autotrading.model.Direction;
 import com.autotrading.model.MAEvent;
-import com.autotrading.model.PriceAlert;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -50,39 +49,6 @@ public class NotificationTemplate {
         sb.append(row("交易时段", event.getSession().getLabel()));
         sb.append(row("市场", marketLabel));
         sb.append(row("时间", TS_FMT.format(new Date(event.getTimestamp()))));
-        sb.append("</table>");
-        return htmlWrap(sb.toString());
-    }
-
-    // ---- Price Alert ----
-
-    public static String priceAlertSubject(PriceAlert alert) {
-        String direction = alert.getDirection() == Direction.UP ? "涨" : "跌";
-        return String.format("[告警] %s(%s) 日内%s %.2f%%",
-                alert.getStockName(), alert.getStockKey(), direction, Math.abs(alert.getChangePercent()));
-    }
-
-    public static String priceAlertBody(PriceAlert alert) {
-        String color = alert.getDirection() == Direction.UP ? GREEN : RED;
-        String direction = alert.getDirection().getLabel();
-        String[] parts = alert.getStockKey().split("\\.");
-        String marketLabel = marketLabel(parts.length > 0 ? Integer.parseInt(parts[0]) : 0);
-        String changeStr = String.format("%s%.2f%%",
-                alert.getChangePercent() > 0 ? "+" : "", alert.getChangePercent());
-
-        // StringBuilder avoids the String.format %  collision with row() output
-        StringBuilder sb = new StringBuilder();
-        sb.append("<h2 style=\"color:").append(color).append("\">")
-          .append(direction).append("</h2>");
-        sb.append("<table style=\"border-collapse:collapse;width:100%;font-size:14px\">");
-        sb.append(row("股票", alert.getStockName() + " (" + alert.getStockKey() + ")"));
-        sb.append(row("当前价", formatPrice(alert.getPrice())));
-        sb.append(row("前收盘", formatPrice(alert.getPreClose())));
-        sb.append(colorRow("波动幅度", changeStr, color));
-        sb.append(row("阈值", "+/-" + alert.getThreshold() + "%"));
-        sb.append(row("交易时段", alert.getSession().getLabel()));
-        sb.append(row("市场", marketLabel));
-        sb.append(row("时间", TS_FMT.format(new Date(alert.getTimestamp()))));
         sb.append("</table>");
         return htmlWrap(sb.toString());
     }

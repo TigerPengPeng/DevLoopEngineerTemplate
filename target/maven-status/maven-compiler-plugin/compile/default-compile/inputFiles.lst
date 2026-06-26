@@ -20,7 +20,6 @@
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/market/TradingSignalService.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/Direction.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/MAEvent.java
-/Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/PriceAlert.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/StockInfo.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/model/TradingSession.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/AlertCoordinator.java
@@ -28,7 +27,6 @@
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/FluctuationAlertScheduler.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/MABreakdownScanner.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/MACrossoverMonitor.java
-/Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/PriceFluctuationMonitor.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/SectorTrendReportScheduler.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/monitor/TimeWindowFluctuationMonitor.java
 /Users/huangpeng/workspace/Codex/AutoTradingSystem/src/main/java/com/autotrading/notification/EmailNotificationService.java

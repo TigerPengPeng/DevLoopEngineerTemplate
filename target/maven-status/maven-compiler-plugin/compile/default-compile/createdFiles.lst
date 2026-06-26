@@ -50,13 +50,11 @@ com/autotrading/config/FutuProperties$Monitor.class
 com/autotrading/market/KLineService$KLineData.class
 com/autotrading/account/StockGroupService.class
 com/autotrading/market/TradingSignalService$SignalType.class
-com/autotrading/monitor/PriceFluctuationMonitor.class
 com/autotrading/futu/QuoteUpdateListener.class
 com/autotrading/AutoTradingApplication.class
 com/autotrading/config/FutuProperties$FluctuationRule.class
 com/autotrading/market/MarketSessionService.class
 com/autotrading/config/FutuProperties$Fluctuation.class
-com/autotrading/model/PriceAlert.class
 com/autotrading/market/QuoteSubscriptionService.class
 com/autotrading/market/RiskAssessmentService.class
 com/autotrading/indicator/MACalculator.class

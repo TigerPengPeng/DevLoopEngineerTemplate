@@ -3,16 +3,13 @@ package com.autotrading.monitor;
 import com.autotrading.config.FutuProperties;
 import com.autotrading.model.Direction;
 import com.autotrading.model.MAEvent;
-import com.autotrading.model.PriceAlert;
 import com.autotrading.model.TradingSession;
 import com.autotrading.notification.EmailNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class AlertCoordinatorTest {
@@ -35,15 +32,6 @@ class AlertCoordinatorTest {
                 Direction.BREAK_UP, 150.0, 145.0, TradingSession.REGULAR);
         coordinator.onMAEvent(event);
         verify(mockEmail, times(1)).sendMAEventAlert(event);
-    }
-
-    @Test
-    @DisplayName("Price alert dispatches to email service")
-    void testPriceAlertDispatch() {
-        PriceAlert alert = new PriceAlert("11.AAPL", "Apple", 155.0, 150.0,
-                3.33, Direction.UP, 2.0, TradingSession.REGULAR);
-        coordinator.onPriceAlert(alert);
-        verify(mockEmail, times(1)).sendPriceAlert(alert);
     }
 
     @Test
@@ -99,24 +87,6 @@ class AlertCoordinatorTest {
                 Direction.BREAK_DOWN, 144.0, 145.0, TradingSession.REGULAR);
         coordinator.onMAEvent(down);
         verify(mockEmail, times(2)).sendMAEventAlert(any());
-    }
-
-    @Test
-    @DisplayName("Price alert for different stock is not suppressed")
-    void testDifferentStockNotSuppressed() {
-        FutuProperties props = new FutuProperties();
-        props.getMonitor().setAlertCooldownMinutes(15);
-        coordinator = new AlertCoordinator(mockEmail, props);
-
-        PriceAlert aapl = new PriceAlert("11.AAPL", "Apple", 155.0, 150.0,
-                3.33, Direction.UP, 2.0, TradingSession.REGULAR);
-        coordinator.onPriceAlert(aapl);
-        verify(mockEmail, times(1)).sendPriceAlert(aapl);
-
-        PriceAlert googl = new PriceAlert("11.GOOGL", "Google", 145.0, 150.0,
-                -3.33, Direction.DOWN, 2.0, TradingSession.REGULAR);
-        coordinator.onPriceAlert(googl);
-        verify(mockEmail, times(2)).sendPriceAlert(any());
     }
 
     @Test

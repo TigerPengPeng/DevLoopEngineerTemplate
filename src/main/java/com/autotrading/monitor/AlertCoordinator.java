@@ -2,7 +2,6 @@ package com.autotrading.monitor;
 
 import com.autotrading.config.FutuProperties;
 import com.autotrading.model.MAEvent;
-import com.autotrading.model.PriceAlert;
 import com.autotrading.notification.EmailNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,23 +54,6 @@ public class AlertCoordinator {
         recordAlert("MA", event.getStockKey(), event.getStockName(),
                 event.getDirection().getLabel() + " MA" + event.getMaPeriod(),
                 event.getPrice(), event.getSession().getLabel(), event.getTimestamp());
-    }
-
-    /**
-     * Handles a price fluctuation event.
-     * Checks cooldown, then dispatches to notification.
-     */
-    public void onPriceAlert(PriceAlert alert) {
-        if (!shouldAlert(alert.dedupKey(), alert.getTimestamp())) {
-            return;
-        }
-        log.info("Dispatching price alert: {} {} {}%",
-                alert.getStockKey(), alert.getDirection().getLabel(),
-                String.format("%.2f", alert.getChangePercent()));
-        emailService.sendPriceAlert(alert);
-        recordAlert("PRICE", alert.getStockKey(), alert.getStockName(),
-                alert.getDirection().getLabel() + " " + String.format("%.2f", alert.getChangePercent()) + "%",
-                alert.getPrice(), alert.getSession().getLabel(), alert.getTimestamp());
     }
 
     /**

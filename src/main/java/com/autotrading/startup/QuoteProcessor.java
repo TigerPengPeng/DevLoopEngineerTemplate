@@ -3,12 +3,10 @@ package com.autotrading.startup;
 import com.autotrading.futu.QuoteUpdateListener;
 import com.autotrading.market.MarketSessionService;
 import com.autotrading.model.MAEvent;
-import com.autotrading.model.PriceAlert;
 import com.autotrading.model.StockInfo;
 import com.autotrading.model.TradingSession;
 import com.autotrading.monitor.AlertCoordinator;
 import com.autotrading.monitor.MACrossoverMonitor;
-import com.autotrading.monitor.PriceFluctuationMonitor;
 import com.autotrading.monitor.TimeWindowFluctuationMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,13 +20,15 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Processes real-time quote updates by dispatching to monitors and alert coordinator.
  * Implements QuoteUpdateListener and is wired onto FutuQuoteHandler during startup.
+ *
+ * Price fluctuation is handled by {@link TimeWindowFluctuationMonitor} in batch mode
+ * (see FluctuationAlertScheduler). This processor only handles MA crossover events.
  */
 @Component
 public class QuoteProcessor implements QuoteUpdateListener {
 
     private static final Logger log = LoggerFactory.getLogger(QuoteProcessor.class);
 
-    private final PriceFluctuationMonitor priceMonitor;
     private final MACrossoverMonitor maMonitor;
     private final AlertCoordinator alertCoordinator;
     private final MarketSessionService sessionService;
@@ -42,10 +42,9 @@ public class QuoteProcessor implements QuoteUpdateListener {
 
     private volatile boolean monitoring = false;
 
-    public QuoteProcessor(PriceFluctuationMonitor priceMonitor, MACrossoverMonitor maMonitor,
+    public QuoteProcessor(MACrossoverMonitor maMonitor,
                            AlertCoordinator alertCoordinator, MarketSessionService sessionService,
                            TimeWindowFluctuationMonitor fluctuationMonitor) {
-        this.priceMonitor = priceMonitor;
         this.maMonitor = maMonitor;
         this.alertCoordinator = alertCoordinator;
         this.sessionService = sessionService;
@@ -84,12 +83,6 @@ public class QuoteProcessor implements QuoteUpdateListener {
 
         if (!session.isTrading()) {
             return;
-        }
-
-        // Check price fluctuation
-        PriceAlert priceAlert = priceMonitor.check(stockKey, stockName, curPrice, preClose, session);
-        if (priceAlert != null) {
-            alertCoordinator.onPriceAlert(priceAlert);
         }
 
         // Check MA crossovers
