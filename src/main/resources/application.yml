@@ -54,9 +54,7 @@ futu:
       - window-minutes: 3
         threshold-percent: 3.0
       - window-minutes: 5
-        threshold-percent: 3.0
-      - window-minutes: 10
-        threshold-percent: 3.0
+        threshold-percent: 5.0
 notification:
   mail:
     from: ${MAIL_FROM:}

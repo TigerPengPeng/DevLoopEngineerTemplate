@@ -573,6 +573,22 @@ function renderEmailHistory(emails) {
 }
 
 async function refresh() {
+  try {
+    const resp = await fetch('/api/status');
+    const d = await resp.json();
+    document.getElementById('update-time').textContent =
+      'Updated ' + fmtFullTime(Date.now());
+    renderCards(d);
+    renderStocks(d.stocks || []);
+    renderSignalRecords(d.signalRecords || []);
+    renderAlerts(d.recentAlerts || []);
+    renderEmailHistory(d.emailHistory || []);
+    updateEmailToggle(d.config.emailEnabled, d.config.emailConfigured);
+  } catch (e) {
+    document.getElementById('conn-dot').className = 'status-dot down';
+    document.getElementById('update-time').textContent = 'Fetch failed: ' + e.message;
+  }
+}
 
 async function toggleEmail() {
   try {
@@ -622,22 +638,6 @@ function updateEmailToggle(enabled, configured) {
     dot.style.boxShadow = 'none';
     label.textContent = '邮件关闭';
     btn.style.borderColor = 'rgba(139,148,158,0.4)';
-  }
-}
-  try {
-    const resp = await fetch('/api/status');
-    const d = await resp.json();
-    document.getElementById('update-time').textContent =
-      'Updated ' + fmtFullTime(Date.now());
-    renderCards(d);
-    renderStocks(d.stocks || []);
-    renderSignalRecords(d.signalRecords || []);
-    renderAlerts(d.recentAlerts || []);
-    renderEmailHistory(d.emailHistory || []);
-    updateEmailToggle(d.config.emailEnabled, d.config.emailConfigured);
-  } catch (e) {
-    document.getElementById('conn-dot').className = 'status-dot down';
-    document.getElementById('update-time').textContent = 'Fetch failed: ' + e.message;
   }
 }
 

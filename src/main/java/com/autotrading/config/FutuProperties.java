@@ -101,8 +101,7 @@ public class FutuProperties {
         /** Rules: each defines a time window (minutes) and threshold percent. */
         private List<FluctuationRule> rules = new ArrayList<>(List.of(
                 new FluctuationRule(3, 3.0),
-                new FluctuationRule(5, 3.0),
-                new FluctuationRule(10, 3.0)
+                new FluctuationRule(5, 5.0)
         ));
         /** Batch evaluation interval in ms. */
         private long evalIntervalMs = 30000;

@@ -115,19 +115,19 @@
 
 ## 新增任务（v1.1 bugfix 迭代 — BF-1/BF-2/BF-3）
 
-- [ ] T18 [type:frontend] BF-1: 邮件开关作用域修复
+- [x] T18 [type:frontend] BF-1: 邮件开关作用域修复
   - 修改目标: index.html 中 toggleEmail/refreshEmailToggle/updateEmailToggle 三个函数被嵌套在 refresh() 函数体内（局部作用域），导致按钮 onclick=\"toggleEmail()\" 在全局作用域找不到。将其提到全局作用域。
   - 允许修改范围: src/main/resources/static/index.html
   - 不允许破坏的逻辑: refresh() 轮询逻辑、其他 tab 渲染逻辑
   - 验收标准: 点击邮件开关可正常切换开启/关闭三态（开启绿/关闭灰/未配置红不可点）
 
-- [ ] T19 [type:database] BF-2: 波段规则持久化
+- [x] T19 [type:database] BF-2: 波段规则持久化
   - 修改目标: 新增 FluctuationConfigEntity + FluctuationConfigRepository；TimeWindowFluctuationMonitor 启动从数据库加载、updateConfig 写库；默认规则改为 3 分钟>=3% OR 5 分钟>=5%
   - 允许修改范围: src/main/java/.../entity/, .../repository/, .../monitor/TimeWindowFluctuationMonitor.java, .../config/FutuProperties.java, application.yml
   - 不允许破坏的逻辑: 波段监控评估逻辑 (recordPrice/evaluate)、Controller 已有的读写接口签名
   - 验收标准: 首启默认 3min>=3% OR 5min>=5%；保存后入库；刷新/重启后页面显示库中最新值；删空规则保存后不回退默认
 
-- [ ] T20 [type:backend] BF-3: 历史事件邮件抑制
+- [x] T20 [type:backend] BF-3: 历史事件邮件抑制
   - 修改目标: TradingSignalScanner 首次扫描时用已知信号初始化 notifiedKeys（仅展示不发邮件），后续只对新增信号发邮件。MA 告警路径 (CrossoverDetector 首次观测返回 null) 已正确，无需改动。
   - 允许修改范围: src/main/java/.../monitor/TradingSignalScanner.java
   - 不允许破坏的逻辑: 信号去重键格式、信号展示 ring buffer、MA 突破告警链路

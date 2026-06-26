@@ -41,6 +41,9 @@ public class TradingSignalScanner {
     /** Tracks which signal dedup keys have already been notified. */
     private final Set<String> notifiedKeys = ConcurrentHashMap.newKeySet();
 
+    /** False until the first scan; the first scan seeds known signals without emailing. */
+    private volatile boolean initialized = false;
+
     /** Ring buffer of signal records for dashboard display. */
     private final List<SignalRecord> records = Collections.synchronizedList(new ArrayList<>());
 
@@ -62,7 +65,44 @@ public class TradingSignalScanner {
 
         List<StockInfo> stocks = quoteProcessor.getStocks();
         List<SignalRecord> newSignals = new ArrayList<>();
-
+        // BF-3: On the first scan after startup, seed notifiedKeys with every
+        // existing (historical) signal so historical signals are shown on the
+        // dashboard but never emailed. Only signals that appear AFTER this
+        // first scan are treated as real-time and emailed.
+        if (!initialized) {
+            initialized = true;
+            List<SignalRecord> seedRecords = new ArrayList<>();
+            for (StockInfo stock : stocks) {
+                try {
+                    List<TradingSignalService.Signal> signals = signalService.getSignals(
+                            stock.getMarket(), stock.getCode());
+                    for (TradingSignalService.Signal s : signals) {
+                        notifiedKeys.add(stock.key() + ":" + s.date() + ":" + s.type() + ":" + s.strategy());
+                    }
+                    if (!signals.isEmpty()) {
+                        TradingSignalService.Signal latest = signals.get(signals.size() - 1);
+                        seedRecords.add(new SignalRecord(
+                                stock.key(), stock.getName(), latest.type().name(),
+                                latest.strategy(), latest.reason(), latest.price(),
+                                latest.date(), System.currentTimeMillis()));
+                    }
+                } catch (Exception e) {
+                    log.debug("Initial signal seed failed for {}: {}", stock.key(), e.getMessage());
+                }
+            }
+            if (!seedRecords.isEmpty()) {
+                synchronized (records) {
+                    for (SignalRecord rec : seedRecords) {
+                        records.add(0, rec);
+                    }
+                    while (records.size() > MAX_RECORDS) {
+                        records.remove(records.size() - 1);
+                    }
+                }
+            }
+            log.info("First signal scan: seeded {} historical signal(s) for display only (no email)", seedRecords.size());
+            return;
+        }
         for (StockInfo stock : stocks) {
             try {
                 List<TradingSignalService.Signal> signals = signalService.getSignals(
@@ -128,6 +168,7 @@ public class TradingSignalScanner {
 
     public void resetAll() {
         notifiedKeys.clear();
+        initialized = false;
         synchronized (records) {
             records.clear();
         }

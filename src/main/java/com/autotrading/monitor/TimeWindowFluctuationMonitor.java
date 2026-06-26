@@ -2,6 +2,11 @@ package com.autotrading.monitor;
 
 import com.autotrading.config.FutuProperties;
 import com.autotrading.config.FutuProperties.FluctuationRule;
+import com.autotrading.entity.FluctuationConfigEntity;
+import com.autotrading.repository.FluctuationConfigRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -30,14 +35,75 @@ public class TimeWindowFluctuationMonitor {
 
     private static final Logger log = LoggerFactory.getLogger(TimeWindowFluctuationMonitor.class);
     private static final int MAX_HISTORY_PER_STOCK = 600;
+    private static final Long CONFIG_ID = 1L;
+
+    private final FutuProperties properties;
+    private final FluctuationConfigRepository configRepository;
+    private final ObjectMapper objectMapper;
 
     private volatile FutuProperties.Fluctuation config;
 
     /** stockKey -> deque of recent price ticks (oldest first). */
     private final Map<String, ConcurrentLinkedDeque<PriceTick>> priceHistory = new ConcurrentHashMap<>();
 
-    public TimeWindowFluctuationMonitor(FutuProperties properties) {
+    public TimeWindowFluctuationMonitor(FutuProperties properties,
+                                         FluctuationConfigRepository configRepository,
+                                         ObjectMapper objectMapper) {
+        this.properties = properties;
+        this.configRepository = configRepository;
+        this.objectMapper = objectMapper;
         this.config = properties.getFluctuation();
+    }
+
+    /**
+     * Loads persisted rules from the database on startup. When the database has
+     * no saved config yet (first run), the seed default from configuration is
+     * persisted so subsequent reads always come from the database.
+     */
+    @PostConstruct
+    public void loadFromDatabase() {
+        try {
+            FluctuationConfigEntity entity = configRepository.findById(CONFIG_ID).orElse(null);
+            if (entity != null) {
+                this.config = toConfig(entity);
+                log.info("Loaded fluctuation config from database: logic={}, rules={}",
+                        config.getLogic(), config.getRules().size());
+            } else {
+                persistConfig(this.config);
+                log.info("No persisted fluctuation config; seeded default: logic={}, rules={}",
+                        config.getLogic(), config.getRules().size());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load fluctuation config from database, using seed default: {}", e.getMessage());
+        }
+    }
+
+    private FutuProperties.Fluctuation toConfig(FluctuationConfigEntity entity) {
+        FutuProperties.Fluctuation cfg = new FutuProperties.Fluctuation();
+        cfg.setLogic(entity.getLogic());
+        cfg.setEvalIntervalMs(this.config.getEvalIntervalMs());
+        try {
+            List<FluctuationRule> rules = objectMapper.readValue(
+                    entity.getRulesJson(), new TypeReference<List<FluctuationRule>>() {});
+            cfg.setRules(rules);
+        } catch (Exception e) {
+            log.warn("Failed to parse persisted rules JSON, falling back to seed default: {}", e.getMessage());
+            cfg.setRules(properties.getFluctuation().getRules());
+        }
+        return cfg;
+    }
+
+    private void persistConfig(FutuProperties.Fluctuation cfg) {
+        FluctuationConfigEntity entity = new FluctuationConfigEntity();
+        entity.setId(CONFIG_ID);
+        entity.setLogic(cfg.getLogic());
+        try {
+            entity.setRulesJson(objectMapper.writeValueAsString(cfg.getRules()));
+        } catch (Exception e) {
+            log.warn("Failed to serialize fluctuation rules to JSON: {}", e.getMessage());
+            entity.setRulesJson("[]");
+        }
+        configRepository.save(entity);
     }
 
     /**
@@ -45,7 +111,12 @@ public class TimeWindowFluctuationMonitor {
      */
     public synchronized void updateConfig(FutuProperties.Fluctuation newConfig) {
         this.config = newConfig;
-        log.info("Fluctuation config updated: logic={}, rules={}",
+        try {
+            persistConfig(newConfig);
+        } catch (Exception e) {
+            log.warn("Failed to persist fluctuation config to database: {}", e.getMessage());
+        }
+        log.info("Fluctuation config updated and persisted: logic={}, rules={}",
                 newConfig.getLogic(), newConfig.getRules().size());
     }
 

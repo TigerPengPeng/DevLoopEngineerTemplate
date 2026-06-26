@@ -3,7 +3,7 @@
 > 全局协调状态文件。各阶段 loop 读取此文件获取全局上下文，写入跨阶段信号。
 
 Last run: 2026-06-26T08:20:00Z
-Current phase: code
+Current phase: test
 Paused: false
 
 ## Active Loops
