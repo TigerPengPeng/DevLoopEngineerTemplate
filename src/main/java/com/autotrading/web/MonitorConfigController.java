@@ -4,6 +4,7 @@ import com.autotrading.config.FutuProperties;
 import com.autotrading.config.FutuProperties.FluctuationRule;
 import com.autotrading.monitor.MABreakdownScanner;
 import com.autotrading.monitor.TimeWindowFluctuationMonitor;
+import com.autotrading.notification.EmailNotificationService;
 import com.autotrading.notification.NotificationTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,13 +27,36 @@ public class MonitorConfigController {
     private final FutuProperties properties;
     private final TimeWindowFluctuationMonitor fluctuationMonitor;
     private final MABreakdownScanner maBreakdownScanner;
+    private final EmailNotificationService emailNotificationService;
 
     public MonitorConfigController(FutuProperties properties,
                                     TimeWindowFluctuationMonitor fluctuationMonitor,
-                                    MABreakdownScanner maBreakdownScanner) {
+                                    MABreakdownScanner maBreakdownScanner,
+                                    EmailNotificationService emailNotificationService) {
         this.properties = properties;
         this.fluctuationMonitor = fluctuationMonitor;
         this.maBreakdownScanner = maBreakdownScanner;
+        this.emailNotificationService = emailNotificationService;
+    }
+
+    // ---- Email Toggle ----
+
+    @GetMapping("/api/email-toggle")
+    public Map<String, Object> getEmailToggle() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("enabled", emailNotificationService.isEmailEnabled());
+        result.put("configured", emailNotificationService.isConfigured());
+        return result;
+    }
+
+    @PostMapping("/api/email-toggle")
+    public Map<String, Object> toggleEmail(@RequestBody Map<String, Object> body) {
+        boolean enabled = Boolean.TRUE.equals(body.get("enabled"));
+        emailNotificationService.setEmailEnabled(enabled);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "ok");
+        result.put("enabled", emailNotificationService.isEmailEnabled());
+        return result;
     }
 
     // ---- Fluctuation Rules ----

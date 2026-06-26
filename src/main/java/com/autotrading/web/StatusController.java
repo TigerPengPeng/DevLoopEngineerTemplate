@@ -10,6 +10,7 @@ import com.autotrading.startup.QuoteProcessor;
 import com.autotrading.monitor.AlertCoordinator;
 import com.autotrading.monitor.TradingSignalScanner;
 import com.autotrading.notification.EmailHistoryService;
+import com.autotrading.notification.EmailNotificationService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,6 +37,7 @@ public class StatusController {
     private final EmailHistoryService emailHistoryService;
     private final TradingSignalScanner signalScanner;
     private final SnapshotPollingService snapshotPollingService;
+    private final EmailNotificationService emailNotificationService;
 
     public StatusController(FutuConnectionManager connectionManager,
                             FutuProperties properties,
@@ -45,7 +47,8 @@ public class StatusController {
                             AlertCoordinator alertCoordinator,
                             EmailHistoryService emailHistoryService,
                             TradingSignalScanner signalScanner,
-                            SnapshotPollingService snapshotPollingService) {
+                            SnapshotPollingService snapshotPollingService,
+                            EmailNotificationService emailNotificationService) {
         this.connectionManager = connectionManager;
         this.properties = properties;
         this.quoteProcessor = quoteProcessor;
@@ -55,6 +58,7 @@ public class StatusController {
         this.emailHistoryService = emailHistoryService;
         this.signalScanner = signalScanner;
         this.snapshotPollingService = snapshotPollingService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     @GetMapping("/api/status")
@@ -83,6 +87,8 @@ public class StatusController {
         cfg.put("alertCooldownMinutes", properties.getMonitor().getAlertCooldownMinutes());
         String group = properties.getFilter().getGroupName();
         cfg.put("groupName", group != null && !group.isBlank() ? group : "(first group)");
+        cfg.put("emailEnabled", emailNotificationService.isEmailEnabled());
+        cfg.put("emailConfigured", emailNotificationService.isConfigured());
         root.put("config", cfg);
 
         // Stocks with latest prices

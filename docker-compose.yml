@@ -27,10 +27,13 @@ services:
       # Reconnect
       RECONNECT_INITIAL_DELAY_MS: ${RECONNECT_INITIAL_DELAY_MS:-5000}
       RECONNECT_MAX_DELAY_MS: ${RECONNECT_MAX_DELAY_MS:-60000}
+      # Database
+      DB_PATH: /app/data/autotrading
     ports:
       - "8080:8080"
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 30s

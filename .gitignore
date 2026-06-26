@@ -36,3 +36,5 @@ worktree-*/
 # Loop 临时状态 (可选: 如不想提交运行时 state)
 # .loop/phases/*-state.md
 # loop-run-log.md
+target/
+data/
