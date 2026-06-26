@@ -2,15 +2,16 @@
 
 > 全局协调状态文件。各阶段 loop 读取此文件获取全局上下文，写入跨阶段信号。
 
-Last run: 2026-06-26T14:36:00Z
-Current phase: idle
+Last run: 2026-06-26T15:06:00Z
+Current phase: design
 Paused: false
 
 ## Active Loops
 - futu-stock-monitor: v1.2 noise-reduction cycle COMPLETE — 代码层已验证（regression: 91/91 测试通过，无功能回归）；文档层待 doc-refresh 子循环同步漂移 D-1~D-4
+- futu-stock-monitor: v1.3 展示与降噪优化 cycle — PRD 已产出 draft-frozen (SG-1 买卖点列表触发时间倒序+移除检测时间戳列 / MA-1 MA 突破跌破事件 5 分钟聚合邮件)；待 Design Loop 消费
 
 ## Frozen Artifacts
-- docs/PRD.md (v1.2 frozen — NR-1~NR-5；NR-4 留痕范围 D-5 待澄清)
+- docs/PRD.md (v1.3 frozen — v1.0 基线 + v1.1 BF-1~3 + v1.2 NR-1~5 + v1.3 SG-1/MA-1；NR-4 留痕范围 D-5 仍待澄清)
 - docs/DESIGN.md (v1.1 draft — 漂移 D-1: 缺 v1.2 NR-3「已静音」视觉规范，建议解冻做 doc-refresh)
 - docs/ARCHITECTURE.md (v1.2 frozen — 漂移 D-2/D-3: 目录结构过期、缺 NR-4/NR-5 变更说明，建议解冻做 doc-refresh)
 - TODO.md (T1~T22 全部完成)

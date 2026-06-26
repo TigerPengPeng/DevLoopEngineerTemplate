@@ -6,6 +6,7 @@ import com.autotrading.model.TradingSession;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import java.util.List;
 
 /**
  * Regression test for the String.format % collision bug that silently
@@ -55,5 +56,25 @@ class NotificationTemplateTest {
                 java.util.List.of());
         assertNotNull(body);
         assertTrue(body.contains("无高风险"));
+    }
+
+    @Test
+    void maBatchBody_listsEachEvent() {
+        MAEvent up = new MAEvent("11.AAPL", "Apple", 5, Direction.BREAK_UP,
+                150.0, 145.0, TradingSession.REGULAR);
+        MAEvent down = new MAEvent("11.TSLA", "Tesla", 13, Direction.BREAK_DOWN,
+                240.0, 245.0, TradingSession.REGULAR);
+        String body = NotificationTemplate.maBatchBody(List.of(up, down));
+        assertNotNull(body);
+        assertTrue(body.contains("Apple"));
+        assertTrue(body.contains("Tesla"));
+        assertTrue(body.contains("2 条"));
+    }
+
+    @Test
+    void maBatchBody_empty_doesNotThrow() {
+        String body = NotificationTemplate.maBatchBody(List.of());
+        assertNotNull(body);
+        assertTrue(body.contains("0 条"));
     }
 }

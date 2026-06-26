@@ -9,7 +9,10 @@ import com.autotrading.repository.AlertRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -38,37 +41,63 @@ class AlertCoordinatorTest {
         return new AlertCoordinator(mockEmail, nf, mockRepo);
     }
 
-    @Test
-    @DisplayName("MA event dispatches to email service")
-    void testMAEventDispatch() {
-        MAEvent event = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 150.0, 145.0, TradingSession.REGULAR);
-        coordinator.onMAEvent(event);
-        verify(mockEmail, times(1)).sendMAEventAlert(event);
+    private MAEvent event(String name, int period, Direction dir, double price, double maValue) {
+        return new MAEvent("11." + name.toUpperCase(), name, period, dir, price, maValue, TradingSession.REGULAR);
     }
 
     @Test
-    @DisplayName("Same MA event within cooldown is suppressed but still recorded")
+    @DisplayName("MA event is buffered, not sent immediately")
+    void testMAEventBuffered() {
+        MAEvent event = event("Apple", 5, Direction.BREAK_UP, 150.0, 145.0);
+        coordinator.onMAEvent(event);
+
+        // Buffered: no direct email, no batch yet
+        verify(mockEmail, never()).sendMAEventAlert(any());
+        verify(mockEmail, never()).sendMABatchAlert(any());
+
+        coordinator.flushMABatch();
+
+        ArgumentCaptor<List<MAEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(mockEmail, times(1)).sendMABatchAlert(captor.capture());
+        assertEquals(1, captor.getValue().size());
+        assertEquals(event, captor.getValue().get(0));
+
+        // Buffer drained: a second flush sends nothing
+        coordinator.flushMABatch();
+        verify(mockEmail, times(1)).sendMABatchAlert(any());
+    }
+
+    @Test
+    @DisplayName("Flush with empty buffer sends no email")
+    void testEmptyFlush() {
+        coordinator.flushMABatch();
+        verify(mockEmail, never()).sendMABatchAlert(any());
+    }
+
+    @Test
+    @DisplayName("Same MA event within cooldown is suppressed (not buffered) but still recorded")
     void testMAEventCooldown() {
         coordinator = coordinatorWithCooldown(15);
 
-        MAEvent event1 = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 150.0, 145.0, TradingSession.REGULAR);
+        MAEvent event1 = event("Apple", 5, Direction.BREAK_UP, 150.0, 145.0);
         coordinator.onMAEvent(event1);
-        verify(mockEmail, times(1)).sendMAEventAlert(event1);
 
         // Same stock+period+direction within cooldown
-        MAEvent event2 = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 151.0, 145.0, TradingSession.REGULAR);
+        MAEvent event2 = event("Apple", 5, Direction.BREAK_UP, 151.0, 145.0);
         coordinator.onMAEvent(event2);
-        verify(mockEmail, times(1)).sendMAEventAlert(any()); // still 1 total
 
-        // Both alerts should be recorded (emailed + suppressed)
+        // Both alerts should be recorded (emailed/buffered + suppressed)
         verify(mockRepo, times(2)).save(any());
         var alerts = coordinator.getRecentAlerts();
         assertEquals(2, alerts.size());
         assertTrue(alerts.get(0).suppressed());  // most recent = suppressed
-        assertFalse(alerts.get(1).suppressed()); // first = emailed
+        assertFalse(alerts.get(1).suppressed()); // first = buffered
+
+        // Flush sends only 1 (event2 was suppressed by cooldown)
+        coordinator.flushMABatch();
+        ArgumentCaptor<List<MAEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(mockEmail, times(1)).sendMABatchAlert(captor.capture());
+        assertEquals(1, captor.getValue().size());
     }
 
     @Test
@@ -76,15 +105,13 @@ class AlertCoordinatorTest {
     void testDifferentPeriodNotSuppressed() {
         coordinator = coordinatorWithCooldown(15);
 
-        MAEvent ma5 = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 150.0, 145.0, TradingSession.REGULAR);
-        coordinator.onMAEvent(ma5);
-        verify(mockEmail, times(1)).sendMAEventAlert(ma5);
+        coordinator.onMAEvent(event("Apple", 5, Direction.BREAK_UP, 150.0, 145.0));
+        coordinator.onMAEvent(event("Apple", 13, Direction.BREAK_UP, 150.0, 140.0));
 
-        MAEvent ma13 = new MAEvent("11.AAPL", "Apple", 13,
-                Direction.BREAK_UP, 150.0, 140.0, TradingSession.REGULAR);
-        coordinator.onMAEvent(ma13);
-        verify(mockEmail, times(2)).sendMAEventAlert(any());
+        coordinator.flushMABatch();
+        ArgumentCaptor<List<MAEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(mockEmail, times(1)).sendMABatchAlert(captor.capture());
+        assertEquals(2, captor.getValue().size());
     }
 
     @Test
@@ -92,32 +119,45 @@ class AlertCoordinatorTest {
     void testOppositeDirectionNotSuppressed() {
         coordinator = coordinatorWithCooldown(15);
 
-        MAEvent up = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 150.0, 145.0, TradingSession.REGULAR);
-        coordinator.onMAEvent(up);
-        verify(mockEmail, times(1)).sendMAEventAlert(up);
+        coordinator.onMAEvent(event("Apple", 5, Direction.BREAK_UP, 150.0, 145.0));
+        coordinator.onMAEvent(event("Apple", 5, Direction.BREAK_DOWN, 144.0, 145.0));
 
-        MAEvent down = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_DOWN, 144.0, 145.0, TradingSession.REGULAR);
-        coordinator.onMAEvent(down);
-        verify(mockEmail, times(2)).sendMAEventAlert(any());
+        coordinator.flushMABatch();
+        ArgumentCaptor<List<MAEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(mockEmail, times(1)).sendMABatchAlert(captor.capture());
+        assertEquals(2, captor.getValue().size());
     }
 
     @Test
-    @DisplayName("Reset clears cooldown state")
+    @DisplayName("Reset clears cooldown state so the event buffers again")
     void testResetCooldown() {
         coordinator = coordinatorWithCooldown(15);
 
-        MAEvent event = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 150.0, 145.0, TradingSession.REGULAR);
+        MAEvent event = event("Apple", 5, Direction.BREAK_UP, 150.0, 145.0);
         coordinator.onMAEvent(event);
-        verify(mockEmail, times(1)).sendMAEventAlert(event);
 
         coordinator.resetAll();
 
-        // After reset, same event should fire again
+        // After reset, same event should buffer again
         coordinator.onMAEvent(event);
-        verify(mockEmail, times(2)).sendMAEventAlert(event);
+
+        coordinator.flushMABatch();
+        ArgumentCaptor<List<MAEvent>> captor = ArgumentCaptor.forClass(List.class);
+        verify(mockEmail, times(1)).sendMABatchAlert(captor.capture());
+        // resetAll cleared the buffer; only the post-reset event remains,
+        // proving cooldown was cleared (event buffered again, not suppressed)
+        assertEquals(1, captor.getValue().size());
+    }
+
+    @Test
+    @DisplayName("Reset clears the MA event buffer")
+    void testResetClearsBuffer() {
+        coordinator.onMAEvent(event("Apple", 5, Direction.BREAK_UP, 150.0, 145.0));
+
+        coordinator.resetAll();
+
+        coordinator.flushMABatch();
+        verify(mockEmail, never()).sendMABatchAlert(any());
     }
 
     @Test
@@ -125,13 +165,11 @@ class AlertCoordinatorTest {
     void testSuppressedAlertPersisted() {
         coordinator = coordinatorWithCooldown(15);
 
-        MAEvent event = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 150.0, 145.0, TradingSession.REGULAR);
+        MAEvent event = event("Apple", 5, Direction.BREAK_UP, 150.0, 145.0);
         coordinator.onMAEvent(event);
 
         // Same event again within cooldown -> suppressed but still recorded
-        MAEvent dup = new MAEvent("11.AAPL", "Apple", 5,
-                Direction.BREAK_UP, 151.0, 145.0, TradingSession.REGULAR);
+        MAEvent dup = event("Apple", 5, Direction.BREAK_UP, 151.0, 145.0);
         coordinator.onMAEvent(dup);
 
         // Two DB records: one non-suppressed, one suppressed

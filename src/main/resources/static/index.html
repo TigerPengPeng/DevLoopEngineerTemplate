@@ -518,12 +518,15 @@ function renderSignalRecords(signals) {
   if (currentTab === 'signal') {
     document.getElementById('alert-count').textContent = signals.length + ' signals';
   }
-  let items = signals.map(function(s) {
+  let sorted = signals.slice().sort(function(a, b) {
+    var d = (b.signalDate || '').localeCompare(a.signalDate || '');
+    return d !== 0 ? d : (b.timestamp - a.timestamp);
+  });
+  let items = sorted.map(function(s) {
     var isBuy = s.signalType === 'BUY';
     var pillClass = isBuy ? 'green' : 'red';
     var label = isBuy ? '买入' : '卖出';
     return '<div class="alert-item">' +
-      '<span class="alert-time">' + fmtTime(s.timestamp) + '</span>' +
       '<span>' +
         '<span class="alert-stock">' + (s.stockName || s.stockKey) + '</span>' +
         '<span class="alert-detail" style="margin-left:8px">' +

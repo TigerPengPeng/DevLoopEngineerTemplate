@@ -53,6 +53,39 @@ public class NotificationTemplate {
         return htmlWrap(sb.toString());
     }
 
+    // ---- MA Event Batch (5-minute digest) ----
+
+    public static String maBatchBody(java.util.List<MAEvent> events) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2 style=\"color:#58a6ff\">MA 事件汇总</h2>");
+        sb.append("<p style=\"color:#8b949e;font-size:13px;margin-bottom:16px\">")
+          .append("近 5 分钟共 ").append(events.size()).append(" 条 MA 事件</p>");
+        sb.append("<table style=\"border-collapse:collapse;width:100%;font-size:13px\">");
+        sb.append("<tr><th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6;text-align:left\">股票</th>")
+          .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6;text-align:left\">事件</th>")
+          .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6\">当前价</th>")
+          .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6\">均线值</th>")
+          .append("<th style=\"padding:8px 10px;border:1px solid #e5e7eb;background:#f3f4f6\">时间</th></tr>");
+        for (MAEvent event : events) {
+            String color = event.getDirection() == Direction.BREAK_UP ? GREEN : RED;
+            sb.append("<tr>")
+              .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;font-weight:600\">")
+              .append(event.getStockName()).append(" <span style=\"color:#8b949e;font-size:12px\">")
+              .append(event.getStockKey()).append("</span></td>")
+              .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;color:").append(color).append(";font-weight:600\">")
+              .append(event.getDirection().getLabel()).append(" MA").append(event.getMaPeriod()).append("</td>")
+              .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center\">")
+              .append(formatPrice(event.getPrice())).append("</td>")
+              .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center\">")
+              .append(formatPrice(event.getMaValue())).append("</td>")
+              .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center\">")
+              .append(TS_FMT.format(new Date(event.getTimestamp()))).append("</td>")
+              .append("</tr>");
+        }
+        sb.append("</table>");
+        return htmlWrap(sb.toString());
+    }
+
     // ---- Daily Risk Report ----
 
     public static String riskReportBody(String marketLabel, String dateStr,

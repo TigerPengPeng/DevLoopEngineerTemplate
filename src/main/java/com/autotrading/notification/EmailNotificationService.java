@@ -84,6 +84,14 @@ public class EmailNotificationService {
     }
 
     @Async("emailExecutor")
+    public void sendMABatchAlert(List<MAEvent> events) {
+        if (!canSend() || events.isEmpty()) return;
+        String subject = String.format("[告警] MA 事件汇总（%d 条）", events.size());
+        String body = NotificationTemplate.maBatchBody(events);
+        sendHtml("MA告警", subject, body);
+    }
+
+    @Async("emailExecutor")
     public void sendRiskReport(String subject, String marketLabel, String dateStr,
                               List<RiskAssessmentService.RiskAssessment> assessments) {
         if (!canSend()) return;

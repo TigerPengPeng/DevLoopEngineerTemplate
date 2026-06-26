@@ -7,6 +7,7 @@ import com.autotrading.repository.AlertRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +33,12 @@ public class AlertCoordinator {
     /** Ring buffer of recently fired alerts (for dashboard display). */
     private final List<RecentAlert> recentAlerts = Collections.synchronizedList(new ArrayList<>());
 
+    /**
+     * Buffer of MA events awaiting the next 5-minute batch email.
+     * Drained and sent in aggregate by {@link #flushMABatch()}.
+     */
+    private final List<MAEvent> maEventBuffer = new ArrayList<>();
+
     public AlertCoordinator(EmailNotificationService emailService,
                             AlertNoiseFilter noiseFilter,
                             AlertRecordRepository alertRecordRepository) {
@@ -49,9 +56,11 @@ public class AlertCoordinator {
         boolean shouldEmail = noiseFilter.shouldSendEmail("MA", event.dedupKey(), event.getTimestamp());
 
         if (shouldEmail) {
-            log.info("Dispatching MA event alert: {} MA{} {}", event.getStockKey(),
+            synchronized (maEventBuffer) {
+                maEventBuffer.add(event);
+            }
+            log.info("Buffered MA event for batch: {} MA{} {}", event.getStockKey(),
                     event.getMaPeriod(), event.getDirection().getLabel());
-            emailService.sendMAEventAlert(event);
         } else {
             log.debug("MA alert suppressed (noise filter): {}", event.dedupKey());
         }
@@ -92,11 +101,33 @@ public class AlertCoordinator {
     }
 
     /**
+     * Drains the MA event buffer and sends a single aggregated batch email.
+     * Runs every 5 minutes via Spring's scheduler; does nothing when no events
+     * accumulated in the window.
+     */
+    @Scheduled(fixedDelay = 300_000)
+    public void flushMABatch() {
+        List<MAEvent> batch;
+        synchronized (maEventBuffer) {
+            if (maEventBuffer.isEmpty()) {
+                return;
+            }
+            batch = new ArrayList<>(maEventBuffer);
+            maEventBuffer.clear();
+        }
+        log.info("Flushing MA batch email: {} event(s)", batch.size());
+        emailService.sendMABatchAlert(batch);
+    }
+
+    /**
      * Clears all cooldown state (used on reconnect).
      */
     public void resetAll() {
         noiseFilter.resetAll();
         recentAlerts.clear();
+        synchronized (maEventBuffer) {
+            maEventBuffer.clear();
+        }
     }
 
     /** DTO for dashboard display. */

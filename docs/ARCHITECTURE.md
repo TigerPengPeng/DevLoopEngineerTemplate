@@ -1,11 +1,17 @@
 # ARCHITECTURE — 技术架构文档
 
 > 状态: frozen | draft-frozen | **frozen**
-> 版本: v1.2
+> 版本: v1.3
 > 最后更新: 2026-06-26
 > 由 Arch Loop 产出，Code Loop 消费。
 
 ## v1.2 变更说明
+## v1.3 变更说明
+
+本次为 **功能迭代**，对应 PRD v1.3 的 SG-1/MA-1。技术改动：
+- SG-1: 纯前端改动，`index.html` 的 `renderSignalRecords` 移除首列系统检测时间戳（`fmtTime(s.timestamp)`），并在渲染前对副本按 `signalDate` 倒序排序（同日多条以 `timestamp` 倒序兜底）。保留的触发日期列（`signalDate`）不变。后端不动。
+- MA-1: `AlertCoordinator` 不再在 `onMAEvent` 中即时发邮件。通过降噪闸门（`AlertNoiseFilter`）的事件改为写入内存缓冲 `maEventBuffer`（替代原 `emailService.sendMAEventAlert`）。新增 `@Scheduled(fixedDelay = 300_000)` 方法 `flushMABatch()`：原子快照并清空缓冲，非空时调用 `EmailNotificationService.sendMABatchAlert(List<MAEvent>)` 发送一封聚合摘要邮件。`EmailNotificationService` 新增 `sendMABatchAlert`（`@Async`），`NotificationTemplate` 新增 `maBatchBody` 渲染逐行表格。全量留痕（`AlertRecord` 写入）与降噪语义均不变；`resetAll` 同步清空缓冲。
+
 
 本次为 **功能增强迭代**，对应 PRD v1.2 的 NR-1/NR-2/NR-3。技术改动：
 - NR-1: 新增 `AlertNoiseFilter` 中央降噪组件，统一管理所有告警类型的短期去重（冷却期复用 `futu.monitor.alert-cooldown-minutes`，默认 15 分钟）。`AlertCoordinator`、`FluctuationAlertScheduler`、`MABreakdownScanner`、`TradingSignalScanner` 均接入该组件，在发送邮件前检查冷却状态。
