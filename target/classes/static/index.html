@@ -490,9 +490,6 @@ function renderAlerts(alerts) {
   }).join('');
   document.getElementById('alerts-list').innerHTML = items;
 }
-
-async function refresh() {
-
 let currentTab = 'signal';
 
 function switchTab(tab) {
@@ -570,6 +567,8 @@ function renderEmailHistory(emails) {
   }).join('');
   document.getElementById('email-list').innerHTML = items;
 }
+
+async function refresh() {
   try {
     const resp = await fetch('/api/status');
     const d = await resp.json();
