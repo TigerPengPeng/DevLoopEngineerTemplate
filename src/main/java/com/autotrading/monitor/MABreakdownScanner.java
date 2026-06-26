@@ -4,7 +4,9 @@ import com.autotrading.config.FutuProperties;
 import com.autotrading.indicator.MACalculator;
 import com.autotrading.market.KLineService;
 import com.autotrading.model.StockInfo;
+import com.autotrading.entity.AlertRecord;
 import com.autotrading.notification.EmailNotificationService;
+import com.autotrading.repository.AlertRecordRepository;
 import com.autotrading.notification.NotificationTemplate;
 import com.autotrading.startup.QuoteProcessor;
 import org.slf4j.Logger;
@@ -37,16 +39,19 @@ public class MABreakdownScanner {
     private final QuoteProcessor quoteProcessor;
     private final EmailNotificationService emailService;
     private final AlertNoiseFilter noiseFilter;
+    private final AlertRecordRepository alertRecordRepository;
     private final List<Integer> maPeriods;
 
     public MABreakdownScanner(KLineService kLineService, QuoteProcessor quoteProcessor,
                                EmailNotificationService emailService,
                                AlertNoiseFilter noiseFilter,
+                               AlertRecordRepository alertRecordRepository,
                                FutuProperties properties) {
         this.kLineService = kLineService;
         this.quoteProcessor = quoteProcessor;
         this.emailService = emailService;
         this.noiseFilter = noiseFilter;
+        this.alertRecordRepository = alertRecordRepository;
         this.maPeriods = properties.getMonitor().getMaPeriods();
     }
 
@@ -99,9 +104,21 @@ public class MABreakdownScanner {
 
         // Filter items through the noise filter — only newly qualifying stocks get emailed
         long now = System.currentTimeMillis();
-        List<NotificationTemplate.MABreakdownItem> toEmail = items.stream()
-                .filter(item -> noiseFilter.shouldSendEmail("BREAKDOWN", item.stockKey(), now))
-                .toList();
+        List<NotificationTemplate.MABreakdownItem> toEmail = new ArrayList<>();
+        for (NotificationTemplate.MABreakdownItem item : items) {
+            boolean shouldEmail = noiseFilter.shouldSendEmail("BREAKDOWN", item.stockKey(), now);
+            if (shouldEmail) {
+                toEmail.add(item);
+            }
+            // NR-4: persist all qualifying alerts (suppressed or not)
+            try {
+                alertRecordRepository.save(new AlertRecord("BREAKDOWN", item.stockKey(),
+                        item.stockName(), "跌破MA" + item.brokenPeriods(), item.currentPrice(),
+                        "", now, !shouldEmail));
+            } catch (Exception e) {
+                log.warn("Failed to persist breakdown alert: {}", e.getMessage());
+            }
+        }
 
         if (toEmail.isEmpty()) {
             log.info("MA breakdown: {} stocks below MA but all suppressed by noise filter", items.size());

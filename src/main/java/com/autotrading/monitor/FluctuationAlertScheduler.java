@@ -4,7 +4,9 @@ import com.autotrading.config.FutuProperties;
 import com.autotrading.market.MarketSessionService;
 import com.autotrading.model.StockInfo;
 import com.autotrading.model.TradingSession;
+import com.autotrading.entity.AlertRecord;
 import com.autotrading.notification.EmailNotificationService;
+import com.autotrading.repository.AlertRecordRepository;
 import com.autotrading.startup.QuoteProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,17 +35,20 @@ public class FluctuationAlertScheduler {
     private final MarketSessionService sessionService;
     private final EmailNotificationService emailService;
     private final AlertNoiseFilter noiseFilter;
+    private final AlertRecordRepository alertRecordRepository;
 
     public FluctuationAlertScheduler(TimeWindowFluctuationMonitor monitor,
                                       QuoteProcessor quoteProcessor,
                                       MarketSessionService sessionService,
                                       EmailNotificationService emailService,
-                                      AlertNoiseFilter noiseFilter) {
+                                      AlertNoiseFilter noiseFilter,
+                                      AlertRecordRepository alertRecordRepository) {
         this.monitor = monitor;
         this.quoteProcessor = quoteProcessor;
         this.sessionService = sessionService;
         this.emailService = emailService;
         this.noiseFilter = noiseFilter;
+        this.alertRecordRepository = alertRecordRepository;
     }
 
     @Scheduled(fixedDelayString = "${futu.fluctuation.eval-interval-ms:30000}")
@@ -69,8 +74,19 @@ public class FluctuationAlertScheduler {
             qualifying.add(result);
 
             String dedupKey = result.stockKey() + ":" + result.direction();
-            if (noiseFilter.shouldSendEmail("FLUCTUATION", dedupKey, result.timestamp())) {
+            boolean shouldEmail = noiseFilter.shouldSendEmail("FLUCTUATION", dedupKey, result.timestamp());
+            if (shouldEmail) {
                 toEmail.add(result);
+            }
+            // NR-4: persist all qualifying alerts (suppressed or not)
+            try {
+                alertRecordRepository.save(new AlertRecord("FLUCTUATION", result.stockKey(),
+                        result.stockName(), result.direction() + " "
+                        + String.format("%.1f%%", result.matchedRules().stream()
+                                .mapToDouble(r -> Math.abs(r.changePct())).max().orElse(0)),
+                        result.currentPrice(), "", result.timestamp(), !shouldEmail));
+            } catch (Exception e) {
+                log.warn("Failed to persist fluctuation alert: {}", e.getMessage());
             }
         }
 

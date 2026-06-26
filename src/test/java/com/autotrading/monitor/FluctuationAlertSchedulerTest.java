@@ -5,6 +5,7 @@ import com.autotrading.market.MarketSessionService;
 import com.autotrading.model.StockInfo;
 import com.autotrading.model.TradingSession;
 import com.autotrading.notification.EmailNotificationService;
+import com.autotrading.repository.AlertRecordRepository;
 import com.autotrading.startup.QuoteProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,8 +39,9 @@ class FluctuationAlertSchedulerTest {
         sessionService = Mockito.mock(MarketSessionService.class);
         emailService = Mockito.mock(EmailNotificationService.class);
         noiseFilter = new AlertNoiseFilter(new FutuProperties());
+        AlertRecordRepository alertRecordRepository = Mockito.mock(AlertRecordRepository.class);
         scheduler = new FluctuationAlertScheduler(monitor, quoteProcessor,
-                sessionService, emailService, noiseFilter);
+                sessionService, emailService, noiseFilter, alertRecordRepository);
 
         when(quoteProcessor.isMonitoring()).thenReturn(true);
         when(quoteProcessor.getStocks()).thenReturn(List.of(stock));

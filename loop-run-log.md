@@ -28,3 +28,6 @@
 | 2026-06-26T08:10:31Z | design | execute+verify | — | — | — | unknown | success |
 | 2026-06-26T09:27:54Z | prd | execute | — | — | — | unknown | failed |
 | 2026-06-26T13:55:24Z | test | execute+verify | — | — | — | unknown | rejected |
+| 2026-06-26T14:27:58Z | test | execute+verify | — | — | — | unknown | success |
+| 2026-06-26T14:36:00Z | regression | execute (NR-1~NR-5 全量) | — | 0 | PASS | unknown | success — 91/91 测试通过，无功能回归；标记 5 项文档漂移 D-1~D-5 |
+| 2026-06-26T14:47:39Z | regression | execute+verify | — | — | — | unknown | rejected |

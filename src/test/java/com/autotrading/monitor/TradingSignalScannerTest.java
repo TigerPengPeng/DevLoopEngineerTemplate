@@ -1,6 +1,7 @@
 package com.autotrading.monitor;
 
 import com.autotrading.config.FutuProperties;
+import com.autotrading.repository.AlertRecordRepository;
 import com.autotrading.market.TradingSignalService;
 import com.autotrading.model.StockInfo;
 import com.autotrading.notification.EmailHistoryService;
@@ -40,8 +41,9 @@ class TradingSignalScannerTest {
         emailService = Mockito.mock(EmailNotificationService.class);
         EmailHistoryService emailHistoryService = Mockito.mock(EmailHistoryService.class);
         AlertNoiseFilter noiseFilter = new AlertNoiseFilter(new FutuProperties());
+        AlertRecordRepository alertRecordRepository = Mockito.mock(AlertRecordRepository.class);
         scanner = new TradingSignalScanner(signalService, quoteProcessor, emailService,
-                emailHistoryService, noiseFilter);
+                emailHistoryService, noiseFilter, alertRecordRepository);
 
         when(quoteProcessor.isMonitoring()).thenReturn(true);
         when(quoteProcessor.getStocks()).thenReturn(List.of(stock));

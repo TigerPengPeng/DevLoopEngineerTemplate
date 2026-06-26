@@ -4,6 +4,7 @@ import com.autotrading.config.FutuProperties;
 import com.autotrading.market.KLineService;
 import com.autotrading.model.StockInfo;
 import com.autotrading.notification.EmailNotificationService;
+import com.autotrading.repository.AlertRecordRepository;
 import com.autotrading.startup.QuoteProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,8 +38,9 @@ class MABreakdownScannerTest {
         emailService = Mockito.mock(EmailNotificationService.class);
         FutuProperties props = new FutuProperties();
         noiseFilter = new AlertNoiseFilter(props);
+        AlertRecordRepository alertRecordRepository = Mockito.mock(AlertRecordRepository.class);
         scanner = new MABreakdownScanner(kLineService, quoteProcessor,
-                emailService, noiseFilter, props);
+                emailService, noiseFilter, alertRecordRepository, props);
 
         StockInfo stock = new StockInfo(11, "AAPL", "Apple");
         when(quoteProcessor.getStocks()).thenReturn(List.of(stock));
