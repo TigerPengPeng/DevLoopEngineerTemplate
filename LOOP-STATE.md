@@ -2,18 +2,18 @@
 
 > 全局协调状态文件。各阶段 loop 读取此文件获取全局上下文，写入跨阶段信号。
 
-Last run: 2026-06-26T06:00:51Z
-Current phase: design
+Last run: 2026-06-26T08:20:00Z
+Current phase: arch
 Paused: false
 
 ## Active Loops
-- futu-stock-monitor: v1.1 bugfix cycle in progress (PRD done → Design next)
+- futu-stock-monitor: v1.1 bugfix cycle in progress (PRD done → Design done → Arch next)
 
 ## Frozen Artifacts
 - docs/PRD.md (v1.1 — bugfix: BF-1/BF-2/BF-3)
-- docs/DESIGN.md (v1.0)
-- docs/ARCHITECTURE.md (v1.0)
-- TODO.md (v1.0 — all 13 tasks done; v1.1 tasks pending Arch Loop)
+- docs/DESIGN.md (v1.1 — 补齐前端设计系统，header 标 draft 待 verifier 验证)
+- docs/ARCHITECTURE.md (v1.0 — v1.1 待 Arch Loop 更新 BF-1/2/3 实现方案)
+- TODO.md (v1.0 done; v1.1 待 Arch Loop 拆分 BF-1/BF-2/BF-3 任务并标 [type:xxx])
 - README.md (synced with implementation)
 
 ## Unfreeze Requests
