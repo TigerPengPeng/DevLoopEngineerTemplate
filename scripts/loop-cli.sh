@@ -28,7 +28,7 @@ STATUS="$SCRIPT_DIR/loop-status.sh"
 cd "$PROJECT_ROOT"
 
 # 默认启用自动确认和自动提交
-export YES_AUTO_CONFIRM="${YES_AUTO_CONFIRM:-true}"
+# 默认启用自动提交
 export AUTO_COMMIT="${AUTO_COMMIT:-true}"
 
 cmd_help() {

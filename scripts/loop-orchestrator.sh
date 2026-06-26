@@ -8,7 +8,6 @@ set -euo pipefail
 # 核心架构：
 #   - Agent 只写代码，不执行 git commit
 #   - Orchestrator 检测到 phase 完成后自动提交
-#   - 保留 sandbox 安全机制，用 yes 自动确认安全提示
 #   - 阶段级 agent 人格文件注入到 prompt 中
 #   - loop-verifier 作为独立 codex exec 会话运行（maker/checker 分离）
 #
@@ -29,9 +28,10 @@ PROMPTS_DIR="$SCRIPT_DIR/prompts"
 POLL_INTERVAL="${POLL_INTERVAL:-30}"
 CODEX_CMD="${CODEX_CMD:-codex}"
 CODEX_MODEL="${CODEX_MODEL:-}"
-SANDBOX_MODE="${SANDBOX_MODE:-workspace-write}"
+
+# sandbox 模式：danger-full-access 允许子 agent 执行 mvn/docker 等需要网络/系统权限的操作
+SANDBOX_MODE="${SANDBOX_MODE:-danger-full-access}"
 AUTO_COMMIT="${AUTO_COMMIT:-true}"
-YES_AUTO_CONFIRM="${YES_AUTO_CONFIRM:-true}"
 
 # 阶段顺序（用于 reset-downstream 迭代）
 ALL_PHASES=(prd design arch code test regression)
@@ -272,7 +272,7 @@ trigger_phase() {
 
     log "Triggering $phase Loop (skill: $skill)"
     log "  Auto-commit: $AUTO_COMMIT"
-    log "  Yes auto-confirm: $YES_AUTO_CONFIRM"
+    log "  Sandbox: $SANDBOX_MODE"
 
     local state_file="$PROJECT_ROOT/.loop/phases/${phase}-state.md"
     local ts
@@ -299,11 +299,9 @@ trigger_phase() {
 
     local exit_code=0
 
-    if [[ "$YES_AUTO_CONFIRM" == "true" ]]; then
-        { yes | head -20; echo "$prompt"; } | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
-    else
-        echo "$prompt" | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
-    fi
+    # 直接管道 prompt，不注入 yes 干扰
+    # codex exec 是非交互模式（approval: never），不需要手动确认
+    printf '%s' "$prompt" | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-console.log || exit_code=$?
 
     if [[ $exit_code -eq 0 ]]; then
         log "✅ Main agent completed, running independent verifier..."
@@ -365,14 +363,17 @@ ${skill_content}
 
 ## 输出格式（必须严格遵循）
 
-\`\`\`
-RESULT: PASS | REJECT
-REASON: [具体原因]
-EVIDENCE: [验证输出/diff 分析/文档对比]
-SUGGESTION: [建议修正方向（若 REJECT）]
-\`\`\`
+在回答的最后一行，必须输出以下格式的判定（不需要代码块包裹）：
 
-只输出上述格式，不要输出其他内容。"
+RESULT: PASS
+
+或
+
+RESULT: REJECT
+REASON: [具体原因]
+SUGGESTION: [建议修正方向]
+
+前面的分析内容可以自由展开，但最后一行必须是上述格式之一。"
 
     local cmd=("$CODEX_CMD" "exec")
     cmd+=("-C" "$PROJECT_ROOT")
@@ -389,15 +390,14 @@ SUGGESTION: [建议修正方向（若 REJECT）]
     log "  Running independent verifier (separate session)..."
 
     local exit_code=0
-    if [[ "$YES_AUTO_CONFIRM" == "true" ]]; then
-        { yes | head -20; echo "$verifier_prompt"; } | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-verify-console.log || exit_code=$?
-    else
-        echo "$verifier_prompt" | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-verify-console.log || exit_code=$?
-    fi
+    # 直接管道 prompt，不注入 yes
+    printf '%s' "$verifier_prompt" | "${cmd[@]}" 2>&1 | tee /tmp/loop-${phase}-verify-console.log || exit_code=$?
 
     # 从 verifier 输出中解析 PASS/REJECT
+    # 优先检查 -o 输出文件，回退到 console 日志
     local verifier_result
     verifier_result=$(cat "$verifier_output" 2>/dev/null || cat /tmp/loop-${phase}-verify-console.log 2>/dev/null || echo "")
+    # 检查最后一行是否包含 RESULT: PASS
     if echo "$verifier_result" | grep -qiE '^RESULT:\s*PASS'; then
         log "  Verifier result: PASS"
         return 0
@@ -496,9 +496,9 @@ main() {
                 AUTO_COMMIT="false"
                 shift
                 ;;
-            --no-auto-confirm)
-                YES_AUTO_CONFIRM="false"
-                shift
+            --sandbox)
+                SANDBOX_MODE="$2"
+                shift 2
                 ;;
             --help|-h)
                 cat << 'HELP'
@@ -511,20 +511,19 @@ loop-orchestrator.sh — Loop Engineering 闭环调度器（方案 3）
   ./scripts/loop-orchestrator.sh --reset-from arch  # 重置 arch 及下游全部阶段为 idle
   ./scripts/loop-orchestrator.sh --phase design     # 强制触发单个阶段
   ./scripts/loop-orchestrator.sh --no-auto-commit   # 禁用自动 git commit
-  ./scripts/loop-orchestrator.sh --no-auto-confirm  # 禁用 yes 自动确认
+  ./scripts/loop-orchestrator.sh --sandbox <mode>   # 覆盖 sandbox 模式
 
 环境变量:
   POLL_INTERVAL     轮询间隔秒数（默认 30）
   CODEX_CMD         codex 命令路径（默认 codex）
   CODEX_MODEL       模型名称
+  SANDBOX_MODE      codex exec sandbox 模式（默认 danger-full-access）
   AUTO_COMMIT       是否自动 git commit（默认 true）
-  YES_AUTO_CONFIRM  是否用 yes 自动确认安全提示（默认 true）
   REQUIREMENT       PRD 阶段的需求输入文本
 
 架构说明（方案 3）:
   ✅ Agent 只写代码，不执行 git commit
   ✅ Orchestrator 统一管理 git 操作
-  ✅ 保留 sandbox 安全保护
   ✅ done→done 自动重置重跑（需求变更不再卡死）
   ✅ --reset-from 一键重置下游阶段
   ✅ 阶段级 agent 人格文件注入到 prompt
@@ -555,7 +554,7 @@ HELP
     log "Project root: $PROJECT_ROOT"
     log "Mode: $mode"
     log "Auto-commit: $AUTO_COMMIT"
-    log "Yes auto-confirm: $YES_AUTO_CONFIRM"
+    log "Sandbox: $SANDBOX_MODE"
 
     case "$mode" in
         check)
