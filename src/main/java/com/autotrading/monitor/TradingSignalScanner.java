@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,6 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Periodically scans all monitored stocks for buy/sell signals.
  * When a NEW signal appears (not previously notified), it is recorded in
  * history and dispatched as an email.
+ * <p>
+ * A secondary noise filter suppresses signal emails for the same stock within
+ * a configurable cooldown window, even if the signal key is technically new.
  *
  * Dedup key: stockKey + signal date + signal type + strategy.
  * Only the latest K-line bar's signal is considered "new" to avoid
@@ -37,6 +39,7 @@ public class TradingSignalScanner {
     private final QuoteProcessor quoteProcessor;
     private final EmailNotificationService emailService;
     private final EmailHistoryService emailHistoryService;
+    private final AlertNoiseFilter noiseFilter;
 
     /** Tracks which signal dedup keys have already been notified. */
     private final Set<String> notifiedKeys = ConcurrentHashMap.newKeySet();
@@ -50,11 +53,13 @@ public class TradingSignalScanner {
     public TradingSignalScanner(TradingSignalService signalService,
                                  QuoteProcessor quoteProcessor,
                                  EmailNotificationService emailService,
-                                 EmailHistoryService emailHistoryService) {
+                                 EmailHistoryService emailHistoryService,
+                                 AlertNoiseFilter noiseFilter) {
         this.signalService = signalService;
         this.quoteProcessor = quoteProcessor;
         this.emailService = emailService;
         this.emailHistoryService = emailHistoryService;
+        this.noiseFilter = noiseFilter;
     }
 
     @Scheduled(fixedDelayString = "${futu.monitor.signal-scan-interval-ms:90000}")
@@ -148,9 +153,14 @@ public class TradingSignalScanner {
 
         log.info("Trading signal scan: {} new signal(s) detected", newSignals.size());
 
-        // Send email for each new signal
+        // Send email for each new signal, filtered through noise filter
         for (SignalRecord rec : newSignals) {
             try {
+                String noiseKey = rec.stockKey() + ":" + rec.signalType();
+                if (!noiseFilter.shouldSendEmail("SIGNAL", noiseKey, System.currentTimeMillis())) {
+                    log.debug("Signal email suppressed (noise filter): {}", noiseKey);
+                    continue;
+                }
                 String subject = NotificationTemplate.signalSubject(rec);
                 String body = NotificationTemplate.signalBody(rec);
                 emailService.sendSignalAlert(subject, body);

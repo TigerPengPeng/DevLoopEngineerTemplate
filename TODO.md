@@ -132,3 +132,16 @@
   - 允许修改范围: src/main/java/.../monitor/TradingSignalScanner.java
   - 不允许破坏的逻辑: 信号去重键格式、信号展示 ring buffer、MA 突破告警链路
   - 验收标准: 首次扫描不发送买卖点邮件；仅实时新信号触发邮件；重启不补发历史 MA 告警
+## 新增任务（v1.2 降噪迭代 — NR-1/NR-2/NR-3）
+
+- [x] T21 [type:backend] NR-1/NR-2: AlertNoiseFilter 统一降噪 + 抑制告警记录
+  - 修改目标: 新增 `AlertNoiseFilter` 组件统一管理所有告警类型的短期去重；`AlertCoordinator` 始终记录告警到 DB + ring buffer，仅邮件受降噪控制；`AlertRecord` 新增 `suppressed` 字段
+  - 允许修改范围: src/main/java/.../monitor/AlertNoiseFilter.java (新增), AlertCoordinator.java, FluctuationAlertScheduler.java, MABreakdownScanner.java, TradingSignalScanner.java, entity/AlertRecord.java
+  - 不允许破坏的逻辑: 波段监控评估逻辑、信号去重键格式、邮件发送链路
+  - 验收标准: 同一告警键在冷却期内只发一次邮件；被静音的告警仍记录到数据库和仪表盘
+
+- [x] T22 [type:frontend] NR-3: 仪表盘静音标识
+  - 修改目标: index.html 中 renderAlerts 根据 suppressed 字段对被静音的告警灰显并标注「已静音」
+  - 允许修改范围: src/main/resources/static/index.html
+  - 不允许破坏的逻辑: refresh() 轮询逻辑、其他 tab 渲染逻辑
+  - 验收标准: 被静音的告警在 MA tab 中 opacity 降低，显示「已静音」标签

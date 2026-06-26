@@ -32,6 +32,10 @@ public class AlertRecord {
     @Column(nullable = false)
     private long timestamp;
 
+    /** True when the alert was noise-suppressed (no email sent). */
+    @Column(nullable = false)
+    private boolean suppressed;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -39,6 +43,11 @@ public class AlertRecord {
 
     public AlertRecord(String type, String stockKey, String stockName,
                        String detail, double price, String session, long timestamp) {
+        this(type, stockKey, stockName, detail, price, session, timestamp, false);
+    }
+
+    public AlertRecord(String type, String stockKey, String stockName,
+                       String detail, double price, String session, long timestamp, boolean suppressed) {
         this.type = type;
         this.stockKey = stockKey;
         this.stockName = stockName;
@@ -46,6 +55,7 @@ public class AlertRecord {
         this.price = price;
         this.session = session;
         this.timestamp = timestamp;
+        this.suppressed = suppressed;
         this.createdAt = Instant.now();
     }
 
@@ -57,5 +67,6 @@ public class AlertRecord {
     public double getPrice() { return price; }
     public String getSession() { return session; }
     public long getTimestamp() { return timestamp; }
+    public boolean isSuppressed() { return suppressed; }
     public Instant getCreatedAt() { return createdAt; }
 }

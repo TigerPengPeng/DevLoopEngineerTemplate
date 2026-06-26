@@ -480,12 +480,12 @@ function renderAlerts(alerts) {
   let items = alerts.map(function(a) {
     const typeClass = a.type === 'MA' ? 'yellow' : 'blue';
     const typeLabel = a.type === 'MA' ? 'MA' : 'Price';
-    return `<div class="alert-item">
+    return `<div class="alert-item" style="opacity:${a.suppressed ? 0.5 : 1}">
       <span class="alert-time">${fmtTime(a.timestamp)}</span>
       <span>
         <span class="alert-stock">${a.stockName || a.stockKey}</span>
         <span class="alert-detail" style="margin-left:8px">
-          <span class="pill ${typeClass}">${typeLabel}</span> ${a.detail}
+          <span class="pill ${typeClass}">${typeLabel}</span> ${a.detail}${a.suppressed ? '<span class="pill" style="background:#6b7280;color:#fff;margin-left:4px">已静音</span>' : ''}
         </span>
       </span>
       <span class="alert-price">${fmtPrice(a.price)}</span>

@@ -11,14 +11,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Periodically evaluates time-window fluctuation rules for all monitored stocks.
- * Qualifying stocks are aggregated into a single batch email.
+ * Qualifying stocks are filtered through the noise filter: only stocks that
+ * haven't been alerted recently are included in the batch email. All qualifying
+ * stocks are logged regardless.
  */
 @Component
 public class FluctuationAlertScheduler {
@@ -30,15 +32,18 @@ public class FluctuationAlertScheduler {
     private final QuoteProcessor quoteProcessor;
     private final MarketSessionService sessionService;
     private final EmailNotificationService emailService;
+    private final AlertNoiseFilter noiseFilter;
 
     public FluctuationAlertScheduler(TimeWindowFluctuationMonitor monitor,
                                       QuoteProcessor quoteProcessor,
                                       MarketSessionService sessionService,
-                                      EmailNotificationService emailService) {
+                                      EmailNotificationService emailService,
+                                      AlertNoiseFilter noiseFilter) {
         this.monitor = monitor;
         this.quoteProcessor = quoteProcessor;
         this.sessionService = sessionService;
         this.emailService = emailService;
+        this.noiseFilter = noiseFilter;
     }
 
     @Scheduled(fixedDelayString = "${futu.fluctuation.eval-interval-ms:30000}")
@@ -49,6 +54,7 @@ public class FluctuationAlertScheduler {
 
         List<StockInfo> stocks = quoteProcessor.getStocks();
         List<TimeWindowFluctuationMonitor.StockFluctuationResult> qualifying = new ArrayList<>();
+        List<TimeWindowFluctuationMonitor.StockFluctuationResult> toEmail = new ArrayList<>();
 
         for (StockInfo stock : stocks) {
             TradingSession session = sessionService.getSession(stock.getMarket());
@@ -57,8 +63,14 @@ public class FluctuationAlertScheduler {
             }
             TimeWindowFluctuationMonitor.StockFluctuationResult result =
                     monitor.evaluate(stock.key(), stock.getName());
-            if (result != null) {
-                qualifying.add(result);
+            if (result == null) {
+                continue;
+            }
+            qualifying.add(result);
+
+            String dedupKey = result.stockKey() + ":" + result.direction();
+            if (noiseFilter.shouldSendEmail("FLUCTUATION", dedupKey, result.timestamp())) {
+                toEmail.add(result);
             }
         }
 
@@ -66,15 +78,20 @@ public class FluctuationAlertScheduler {
             return;
         }
 
-        log.info("Fluctuation batch: {} stocks qualified for alert", qualifying.size());
+        if (toEmail.isEmpty()) {
+            log.info("Fluctuation: {} stocks qualified but all suppressed by noise filter", qualifying.size());
+            return;
+        }
+
+        log.info("Fluctuation batch: {} stocks qualified, {} passed noise filter", qualifying.size(), toEmail.size());
 
         String timeStr = LocalDateTime.now().format(TS_FMT);
         FutuProperties.Fluctuation cfg = monitor.getConfig();
         String subject = String.format("[盘中波动汇总] %d 只股票触发波动规则 (%s)",
-                qualifying.size(), timeStr);
+                toEmail.size(), timeStr);
 
         try {
-            emailService.sendFluctuationBatch(subject, timeStr, cfg.getLogic(), qualifying);
+            emailService.sendFluctuationBatch(subject, timeStr, cfg.getLogic(), toEmail);
         } catch (Exception e) {
             log.error("Failed to send fluctuation batch email: {}", e.getMessage(), e);
         }

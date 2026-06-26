@@ -22,7 +22,8 @@ import java.util.Map;
 /**
  * Scheduled MA breakdown scanner.
  * Scans all monitored stocks for prices below any configured MA (5/13/30/55).
- * Aggregates results into a single batch email.
+ * Aggregates results into a single batch email, filtered through the noise filter
+ * so stocks already alerted recently are not re-emailed.
  * <p>
  * Default schedule: 10:00 and 14:00 and 22:00 Asia/Shanghai on weekdays.
  */
@@ -35,13 +36,17 @@ public class MABreakdownScanner {
     private final KLineService kLineService;
     private final QuoteProcessor quoteProcessor;
     private final EmailNotificationService emailService;
+    private final AlertNoiseFilter noiseFilter;
     private final List<Integer> maPeriods;
 
     public MABreakdownScanner(KLineService kLineService, QuoteProcessor quoteProcessor,
-                               EmailNotificationService emailService, FutuProperties properties) {
+                               EmailNotificationService emailService,
+                               AlertNoiseFilter noiseFilter,
+                               FutuProperties properties) {
         this.kLineService = kLineService;
         this.quoteProcessor = quoteProcessor;
         this.emailService = emailService;
+        this.noiseFilter = noiseFilter;
         this.maPeriods = properties.getMonitor().getMaPeriods();
     }
 
@@ -92,12 +97,23 @@ public class MABreakdownScanner {
 
         log.info("MA breakdown scan: {} stocks below at least one MA", items.size());
 
+        // Filter items through the noise filter — only newly qualifying stocks get emailed
+        long now = System.currentTimeMillis();
+        List<NotificationTemplate.MABreakdownItem> toEmail = items.stream()
+                .filter(item -> noiseFilter.shouldSendEmail("BREAKDOWN", item.stockKey(), now))
+                .toList();
+
+        if (toEmail.isEmpty()) {
+            log.info("MA breakdown: {} stocks below MA but all suppressed by noise filter", items.size());
+            return items;
+        }
+
         String timeStr = LocalDateTime.now().format(TS_FMT);
         String subject = String.format("[MA破位扫描] %s %d 只股票跌破均线 (%s)",
-                label, items.size(), timeStr);
+                label, toEmail.size(), timeStr);
 
         try {
-            emailService.sendMABreakdownReport(subject, timeStr, items);
+            emailService.sendMABreakdownReport(subject, timeStr, toEmail);
         } catch (Exception e) {
             log.error("Failed to send MA breakdown email: {}", e.getMessage(), e);
         }

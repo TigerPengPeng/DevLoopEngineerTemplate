@@ -1,9 +1,16 @@
 # ARCHITECTURE — 技术架构文档
 
 > 状态: frozen | draft-frozen | **frozen**
-> 版本: v1.1
+> 版本: v1.2
 > 最后更新: 2026-06-26
 > 由 Arch Loop 产出，Code Loop 消费。
+
+## v1.2 变更说明
+
+本次为 **功能增强迭代**，对应 PRD v1.2 的 NR-1/NR-2/NR-3。技术改动：
+- NR-1: 新增 `AlertNoiseFilter` 中央降噪组件，统一管理所有告警类型的短期去重（冷却期复用 `futu.monitor.alert-cooldown-minutes`，默认 15 分钟）。`AlertCoordinator`、`FluctuationAlertScheduler`、`MABreakdownScanner`、`TradingSignalScanner` 均接入该组件，在发送邮件前检查冷却状态。
+- NR-2: `AlertCoordinator` 改为始终记录告警（ring buffer + `alert_records` 表），仅邮件发送受降噪控制。`AlertRecord` 实体新增 `suppressed` 字段标记被静音的告警。
+- NR-3: 前端 `index.html` 中 `renderAlerts` 函数根据 `suppressed` 字段对被静音的告警灰显并标注「已静音」。
 
 ## v1.1 变更说明
 
@@ -200,10 +207,28 @@ AutoTradingSystem/
   └─→ MACrossoverMonitor.check(股票, 当前价, MA值)
         └─→ AlertCoordinator.onEvent(MAEvent)
 
-[告警分发] AlertCoordinator
+[告警分发] AlertCoordinator (NR-1/NR-2)
   │
-  ├─→ 检查冷却期 (每股每事件类型 15min)
-  └─→ EmailNotificationService.send(事件)
+  ├─→ AlertNoiseFilter.shouldSendEmail(type, dedupKey, timestamp)
+  │     └─→ true: EmailNotificationService.sendMAEventAlert(event)
+  │     └─→ false: 不发邮件
+  ├─→ 始终 recordAlert() → ring buffer + alert_records 表 (suppressed 标记)
+  │
+[波段波动] FluctuationAlertScheduler (NR-1)
+  │
+  ├─→ AlertNoiseFilter.shouldSendEmail("FLUCTUATION", stockKey:direction)
+  └─→ 仅通过降噪的股票进入批量邮件
+
+[MA破位] MABreakdownScanner (NR-1)
+  │
+  ├─→ AlertNoiseFilter.shouldSendEmail("BREAKDOWN", stockKey)
+  └─→ 仅通过降噪的股票进入批量邮件
+
+[买卖点] TradingSignalScanner (NR-1)
+  │
+  ├─→ notifiedKeys 去重 (永久, 会话级)
+  ├─→ AlertNoiseFilter.shouldSendEmail("SIGNAL", stockKey:type) (短期去重)
+  └─→ 仅通过两层去重的信号触发邮件
 
 [断线重连] onDisconnect
   │
