@@ -40,8 +40,9 @@ public class StockDetailController {
     }
 
     @GetMapping("/{market}/{code}/kline")
-    public Map<String, Object> getKLine(@PathVariable int market, @PathVariable String code) {
-        List<KLineService.KLineData> klines = kLineService.getKLines(market, code);
+    public Map<String, Object> getKLine(@PathVariable int market, @PathVariable String code,
+                                        @RequestParam(defaultValue = "day") String frequency) {
+        List<KLineService.KLineData> klines = kLineService.getKLines(market, code, frequency);
 
         List<Map<String, Object>> dataList = new ArrayList<>();
         for (KLineService.KLineData k : klines) {
@@ -60,6 +61,7 @@ public class StockDetailController {
         result.put("code", code);
         result.put("market", market);
         result.put("count", dataList.size());
+        result.put("frequency", frequency);
 
         // Calculate MA series for chart overlay
         List<Double> closes = klines.stream().map(KLineService.KLineData::close).toList();

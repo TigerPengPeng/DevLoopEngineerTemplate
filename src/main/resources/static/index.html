@@ -286,6 +286,27 @@
 
 <div class="section">
   <div class="section-header">
+    <span>MA 报警规则配置</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--text-dim)">顶层逻辑</span>
+      <select id="ma-alert-logic" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px">
+        <option value="OR">OR (任一规则满足)</option>
+        <option value="AND">AND (全部规则满足)</option>
+      </select>
+      <button class="btn" onclick="saveMAAlertConfig()">保存规则</button>
+    </div>
+  </div>
+  <div style="padding:16px">
+    <div id="ma-alert-rules"></div>
+    <button class="btn" style="margin-top:8px" onclick="addMAAlertRule()">+ 添加规则</button>
+    <p style="margin-top:12px;font-size:11px;color:var(--text-dim);line-height:1.6">
+      每条规则可组合多个条件（日线/周线 MA 突破/跌破）。规则内 AND 表示事件+状态确认：某条件发生穿越且其余条件当前均处于匹配态时触发。空配置 = 无报警。
+    </p>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
     <div style="display:flex;gap:0;align-items:center">
       <button class="tab-btn active" id="tab-signal" onclick="switchTab('signal')">买卖点通知</button>
       <button class="tab-btn" id="tab-ma" onclick="switchTab('ma')">MA 告警</button>
@@ -329,6 +350,60 @@ function sessionPillClass(session) {
 }
 
 let flucRules = [];
+let maAlertRules = [];
+
+async function loadMAAlertConfig() {
+  try {
+    const resp = await fetch('/api/ma-alert-config');
+    const cfg = await resp.json();
+    maAlertRules = cfg.rules || [];
+    document.getElementById('ma-alert-logic').value = cfg.logic || 'OR';
+    renderMAAlertRules();
+  } catch(e) {}
+}
+
+function renderMAAlertRules() {
+  document.getElementById('ma-alert-rules').innerHTML = maAlertRules.map(function(r, i) {
+    var conds = (r.conditions || []).map(function(c, j) {
+      return '<div style="display:flex;align-items:center;gap:6px;margin:4px 0 4px 16px">' +
+        '<select style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px" onchange="maAlertRules[' + i + '].conditions[' + j + '].frequency=this.value">' +
+        '<option value="day"' + (c.frequency==='day'?' selected':'') + '>日线</option>' +
+        '<option value="week"' + (c.frequency==='week'?' selected':'') + '>周线</option></select>' +
+        '<span style="color:var(--text-dim);font-size:12px">MA</span>' +
+        '<input type="number" value="' + c.maPeriod + '" min="1" max="250" style="width:50px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px" onchange="maAlertRules[' + i + '].conditions[' + j + '].maPeriod=parseInt(this.value)">' +
+        '<select style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px" onchange="maAlertRules[' + i + '].conditions[' + j + '].direction=this.value">' +
+        '<option value="BREAK_UP"' + (c.direction==='BREAK_UP'?' selected':'') + '>突破</option>' +
+        '<option value="BREAK_DOWN"' + (c.direction==='BREAK_DOWN'?' selected':'') + '>跌破</option></select>' +
+        '<button class="btn" style="padding:2px 6px" onclick="maAlertRules[' + i + '].conditions.splice(' + j + ',1);renderMAAlertRules()">x</button>' +
+        '</div>';
+    }).join('');
+    return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+      '<input type="text" placeholder="规则名称" value="' + (r.name||'') + '" style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px;font-size:12px" onchange="maAlertRules[' + i + '].name=this.value">' +
+      '<select style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px" onchange="maAlertRules[' + i + '].logic=this.value">' +
+      '<option value="OR"' + (r.logic==='OR'?' selected':'') + '>OR</option>' +
+      '<option value="AND"' + (r.logic==='AND'?' selected':'') + '>AND</option></select>' +
+      '<button class="btn" style="padding:2px 6px" onclick="maAlertRules[' + i + '].conditions.push({frequency:'day',maPeriod:5,direction:'BREAK_UP'});renderMAAlertRules()">+ 条件</button>' +
+      '<button class="btn" style="padding:2px 6px" onclick="maAlertRules.splice(' + i + ',1);renderMAAlertRules()">删除规则</button>' +
+      '</div>' + conds + '</div>';
+  }).join('');
+}
+
+function addMAAlertRule() {
+  maAlertRules.push({ name: '', logic: 'OR', conditions: [{frequency:'day', maPeriod:5, direction:'BREAK_UP'}] });
+  renderMAAlertRules();
+}
+
+async function saveMAAlertConfig() {
+  const logic = document.getElementById('ma-alert-logic').value;
+  try {
+    await fetch('/api/ma-alert-config', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ logic: logic, rules: maAlertRules })
+    });
+  } catch(e) {}
+}
+
 
 async function reloadStocks() {
   const btn = document.getElementById('reload-stocks-btn');
@@ -645,7 +720,7 @@ function updateEmailToggle(enabled, configured) {
 }
 
 refresh();
-loadFluctuationConfig();setInterval(refresh, 5000);
+loadFluctuationConfig();loadMAAlertConfig();setInterval(refresh, 5000);
 </script>
 
 </body>

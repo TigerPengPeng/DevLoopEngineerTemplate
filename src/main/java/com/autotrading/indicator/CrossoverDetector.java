@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Detects when the current price crosses above (breakthrough) or below (breakdown)
- * an MA line. Maintains per-stock per-MA state to detect transitions.
+ * an MA line. Maintains per-stock per-frequency per-MA state to detect transitions.
  */
 @Component
 public class CrossoverDetector {
@@ -20,34 +20,36 @@ public class CrossoverDetector {
 
     /**
      * Tracks whether the last price was above or below each MA.
-     * Key format: stockKey + ":" + maPeriod
+     * Key format: stockKey + ":" + frequency + ":" + maPeriod
      */
     private final Map<String, Boolean> aboveState = new ConcurrentHashMap<>();
 
+    /** Day-frequency overload: delegates to {@link #checkCrossover(String, String, int, double, double)}. */
+    public Direction checkCrossover(String stockKey, int maPeriod, double price, double maValue) {
+        return checkCrossover(stockKey, "day", maPeriod, price, maValue);
+    }
+
     /**
-     * Checks for a crossover event given the current price and MA value.
+     * Checks for a crossover event given the current price and MA value at a frequency.
      *
-     * @param stockKey  unique stock key
-     * @param maPeriod  MA period
-     * @param price     current price
-     * @param maValue   current MA value (NaN if insufficient data)
+     * @param frequency "day" or "week" — state is tracked independently per frequency
      * @return BREAK_UP if price crossed from below to above MA,
      *         BREAK_DOWN if crossed from above to below,
      *         null if no crossover (first observation or no change)
      */
-    public Direction checkCrossover(String stockKey, int maPeriod, double price, double maValue) {
+    public Direction checkCrossover(String stockKey, String frequency, int maPeriod, double price, double maValue) {
         if (Double.isNaN(maValue) || maValue <= 0) {
             return null;
         }
 
-        String stateKey = stockKey + ":" + maPeriod;
+        String stateKey = stockKey + ":" + frequency + ":" + maPeriod;
         boolean currentlyAbove = price > maValue;
         Boolean previousAbove = aboveState.get(stateKey);
 
         if (previousAbove == null) {
             // First observation: record state but no event
             aboveState.put(stateKey, currentlyAbove);
-            log.debug("Initial state for {} MA{}: {}", stockKey, maPeriod,
+            log.debug("Initial state for {} {} MA{}: {}", stockKey, frequency, maPeriod,
                     currentlyAbove ? "above" : "below");
             return null;
         }
@@ -55,8 +57,8 @@ public class CrossoverDetector {
         if (previousAbove != currentlyAbove) {
             aboveState.put(stateKey, currentlyAbove);
             Direction direction = currentlyAbove ? Direction.BREAK_UP : Direction.BREAK_DOWN;
-            log.debug("Crossover detected: {} MA{} {} (price={}, MA={})",
-                    stockKey, maPeriod, direction, price, maValue);
+            log.debug("Crossover detected: {} {} MA{} {} (price={}, MA={})",
+                    stockKey, frequency, maPeriod, direction, price, maValue);
             return direction;
         }
 
@@ -64,10 +66,15 @@ public class CrossoverDetector {
     }
 
     /**
-     * Resets state for a stock (used after K-line refresh).
+     * Resets state for a stock (used after K-line refresh). Clears all frequencies.
      */
     public void resetState(String stockKey) {
         aboveState.keySet().removeIf(key -> key.startsWith(stockKey + ":"));
+    }
+
+    /** Resets state for a stock at a specific frequency ("day" or "week"). */
+    public void resetState(String stockKey, String frequency) {
+        aboveState.keySet().removeIf(key -> key.startsWith(stockKey + ":" + frequency + ":"));
     }
 
     /**
@@ -77,16 +84,19 @@ public class CrossoverDetector {
         aboveState.clear();
     }
 
+    /** Day-frequency overload: delegates to {@link #checkAll(String, String, double, Map, List)}. */
+    public Map<Integer, Direction> checkAll(String stockKey, double price,
+                                             Map<Integer, Double> maValues, List<Integer> periods) {
+        return checkAll(stockKey, "day", price, maValues, periods);
+    }
+
     /**
-     * Checks all MA periods for a stock.
+     * Checks all MA periods for a stock at a frequency.
      *
-     * @param stockKey unique stock key
-     * @param price    current price
-     * @param maValues map of MA period -> MA value
-     * @param periods  list of MA periods to check
+     * @param frequency "day" or "week"
      * @return map of MA period -> Direction (only contains entries with crossovers)
      */
-    public Map<Integer, Direction> checkAll(String stockKey, double price,
+    public Map<Integer, Direction> checkAll(String stockKey, String frequency, double price,
                                              Map<Integer, Double> maValues, List<Integer> periods) {
         Map<Integer, Direction> result = new java.util.HashMap<>();
         for (int period : periods) {
@@ -94,11 +104,19 @@ public class CrossoverDetector {
             if (maValue == null) {
                 continue;
             }
-            Direction direction = checkCrossover(stockKey, period, price, maValue);
+            Direction direction = checkCrossover(stockKey, frequency, period, price, maValue);
             if (direction != null) {
                 result.put(period, direction);
             }
         }
         return result;
+    }
+
+    /**
+     * Returns the current side of price relative to an MA (true = above), or null
+     * if no state has been recorded yet. Used for AND-rule state confirmation.
+     */
+    public Boolean isAbove(String stockKey, String frequency, int maPeriod) {
+        return aboveState.get(stockKey + ":" + frequency + ":" + maPeriod);
     }
 }

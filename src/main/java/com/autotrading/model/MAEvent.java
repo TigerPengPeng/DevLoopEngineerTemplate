@@ -12,10 +12,17 @@ public class MAEvent {
     private final double price;
     private final double maValue;
     private final TradingSession session;
+    private final String frequency;
     private final long timestamp;
 
+    /** Legacy constructor: defaults frequency to "day" (preserves existing callers/tests). */
     public MAEvent(String stockKey, String stockName, int maPeriod, Direction direction,
                    double price, double maValue, TradingSession session) {
+        this(stockKey, stockName, maPeriod, direction, price, maValue, session, "day");
+    }
+
+    public MAEvent(String stockKey, String stockName, int maPeriod, Direction direction,
+                   double price, double maValue, TradingSession session, String frequency) {
         this.stockKey = stockKey;
         this.stockName = stockName;
         this.maPeriod = maPeriod;
@@ -23,6 +30,7 @@ public class MAEvent {
         this.price = price;
         this.maValue = maValue;
         this.session = session;
+        this.frequency = frequency == null || frequency.isBlank() ? "day" : frequency;
         this.timestamp = System.currentTimeMillis();
     }
 
@@ -33,12 +41,13 @@ public class MAEvent {
     public double getPrice() { return price; }
     public double getMaValue() { return maValue; }
     public TradingSession getSession() { return session; }
+    public String getFrequency() { return frequency; }
     public long getTimestamp() { return timestamp; }
 
     /**
-     * Unique dedup key for cooldown: stock + period + direction.
+     * Unique dedup key for cooldown: stock + frequency + period + direction.
      */
     public String dedupKey() {
-        return "MA:" + stockKey + ":MA" + maPeriod + ":" + direction;
+        return "MA:" + stockKey + ":" + frequency + ":MA" + maPeriod + ":" + direction;
     }
 }

@@ -113,6 +113,8 @@ public class ApplicationStartupRunner {
             // Step 2: Fetch K-lines for MA calculation
             log.info("[2/4] Fetching daily K-lines...");
             kLineService.fetchAll(monitoredStocks);
+            log.info("[2/4] Fetching weekly K-lines...");
+            kLineService.fetchAll(monitoredStocks, "week");
             log.info("[2/4] K-line data cached for {} stocks", kLineService.cachedStockCount());
 
             // Step 3: Register stocks for market state + quote processing + snapshot polling
@@ -181,8 +183,9 @@ public class ApplicationStartupRunner {
     @Scheduled(fixedDelayString = "${futu.monitor.kline-refresh-interval:60000}")
     public void refreshKLines() {
         if (connectionManager.isReady() && !monitoredStocks.isEmpty()) {
-            log.debug("Refreshing K-line data...");
+            log.debug("Refreshing K-line data (daily + weekly)...");
             kLineService.refreshAll(monitoredStocks);
+            kLineService.fetchAll(monitoredStocks, "week");
         }
     }
 }

@@ -26,8 +26,9 @@ public class NotificationTemplate {
 
     public static String maEventSubject(MAEvent event) {
         String action = event.getDirection() == Direction.BREAK_UP ? "突破" : "跌破";
-        return String.format("[告警] %s(%s) %s MA%d",
-                event.getStockName(), event.getStockKey(), action, event.getMaPeriod());
+        return String.format("[告警] %s(%s) %s MA%d(%s)",
+                event.getStockName(), event.getStockKey(), action, event.getMaPeriod(),
+                freqLabel(event.getFrequency()));
     }
 
     public static String maEventBody(MAEvent event) {
@@ -40,10 +41,12 @@ public class NotificationTemplate {
         // (which contain literal % chars from width:30%) as format specifiers.
         StringBuilder sb = new StringBuilder();
         sb.append("<h2 style=\"color:").append(color).append("\">")
-          .append(action).append(" MA").append(event.getMaPeriod()).append("</h2>");
+          .append(action).append(" MA").append(event.getMaPeriod())
+          .append("(").append(freqLabel(event.getFrequency())).append(")").append("</h2>");
         sb.append("<table style=\"border-collapse:collapse;width:100%;font-size:14px\">");
         sb.append(row("股票", event.getStockName() + " (" + event.getStockKey() + ")"));
-        sb.append(colorRow("事件", action + " MA" + event.getMaPeriod(), color));
+        sb.append(colorRow("事件", action + " MA" + event.getMaPeriod()
+                + "(" + freqLabel(event.getFrequency()) + ")", color));
         sb.append(colorRow("当前价", formatPrice(event.getPrice()), color));
         sb.append(row("MA" + event.getMaPeriod(), formatPrice(event.getMaValue())));
         sb.append(row("交易时段", event.getSession().getLabel()));
@@ -73,7 +76,8 @@ public class NotificationTemplate {
               .append(event.getStockName()).append(" <span style=\"color:#8b949e;font-size:12px\">")
               .append(event.getStockKey()).append("</span></td>")
               .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;color:").append(color).append(";font-weight:600\">")
-              .append(event.getDirection().getLabel()).append(" MA").append(event.getMaPeriod()).append("</td>")
+              .append(event.getDirection().getLabel()).append(" MA").append(event.getMaPeriod())
+              .append("(").append(freqLabel(event.getFrequency())).append(")").append("</td>")
               .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center\">")
               .append(formatPrice(event.getPrice())).append("</td>")
               .append("<td style=\"padding:8px 10px;border:1px solid #e5e7eb;text-align:center\">")
@@ -341,6 +345,10 @@ public class NotificationTemplate {
         sb.append("</table>");
         return htmlWrap(sb.toString());
     }
+    private static String freqLabel(String frequency) {
+        return "week".equalsIgnoreCase(frequency) ? "周线" : "日线";
+    }
+
     private static String htmlWrap(String body) {
         return "<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto\">" +
                 body +

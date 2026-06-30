@@ -39,6 +39,11 @@
   .ma-legend { display: flex; gap: 12px; font-size: 11px;
     font-family: "SF Mono","Cascadia Code",monospace; }
   .ma-legend span { cursor: pointer; }
+  .freq-switch { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .freq-switch button { background: var(--bg); color: var(--text-dim); border: none;
+    padding: 3px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .freq-switch button.active { background: var(--blue); color: #fff; font-weight: 600; }
+  .chart-header { gap: 12px; }
   #chart { width: 100%; height: 420px; }
   .sidebar { display: flex; flex-direction: column; gap: 16px; }
   .panel { background: var(--surface); border: 1px solid var(--border);
@@ -101,12 +106,16 @@
   <div>
     <div class="chart-section">
       <div class="chart-header">
-        <span class="chart-title">120-Day K-Line (Forward Adjusted)</span>
+        <span class="chart-title" id="chart-title">120-Day K-Line (Forward Adjusted)</span>
         <div class="ma-legend">
           <span style="color:#f5a623">MA5</span>
           <span style="color:#58a6ff">MA13</span>
           <span style="color:#bc8cff">MA30</span>
           <span style="color:#3fb950">MA55</span>
+        </div>
+        <div class="freq-switch">
+          <button id="freq-day" class="active" onclick="switchFrequency('day')">日线</button>
+          <button id="freq-week" onclick="switchFrequency('week')">周线</button>
         </div>
       </div>
       <div id="chart"></div>
@@ -161,13 +170,42 @@ const market = parseInt(params.get('market') || '0');
 const code = params.get('code') || '';
 var chart = null;
 var candleSeries = null;
+var currentFrequency = 'day';
+
+async function loadKLineData(frequency) {
+  var resp = await fetch('/api/stock/' + market + '/' + code + '/kline?frequency=' + frequency);
+  var data = await resp.json();
+  var label = frequency === 'week' ? '120-Week' : '120-Day';
+  var el = document.getElementById('chart-title');
+  if (el) el.textContent = label + ' K-Line (Forward Adjusted)';
+  return data;
+}
+
+async function switchFrequency(freq) {
+  if (freq === currentFrequency) return;
+  currentFrequency = freq;
+  document.getElementById('freq-day').classList.toggle('active', freq === 'day');
+  document.getElementById('freq-week').classList.toggle('active', freq === 'week');
+  try {
+    var data = await loadKLineData(freq);
+    if (chart) { chart.remove(); chart = null; candleSeries = null; }
+    if (data.count === 0) {
+      document.getElementById('chart').innerHTML = '<div class="loading">No K-line data available</div>';
+      return;
+    }
+    document.getElementById('chart').innerHTML = '';
+    renderChart(data);
+    renderBreakouts(data);
+  } catch(e) {
+    document.getElementById('chart').innerHTML = '<div class="loading">Failed to load: ' + e.message + '</div>';
+  }
+}
 
 async function init() {
   document.getElementById('stock-code').textContent = code;
 
   try {
-    const resp = await fetch('/api/stock/' + market + '/' + code + '/kline');
-    const data = await resp.json();
+    const data = await loadKLineData(currentFrequency);
 
     document.getElementById('stock-name').textContent = code;
     document.getElementById('stock-session').textContent = data.session || '';
