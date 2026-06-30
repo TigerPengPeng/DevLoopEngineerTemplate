@@ -156,7 +156,12 @@ public class MonitorConfigController {
                     for (Map<String, Object> c : condList) {
                         String freq = (String) c.getOrDefault("frequency", "day");
                         int period = ((Number) c.get("maPeriod")).intValue();
-                        Direction dir = Direction.valueOf((String) c.get("direction"));
+                        Direction dir;
+                        try {
+                            dir = Direction.valueOf((String) c.get("direction"));
+                        } catch (IllegalArgumentException e) {
+                            continue; // skip condition with invalid direction
+                        }
                         conds.add(new MARuleEngine.Condition(freq, period, dir));
                     }
                 }
