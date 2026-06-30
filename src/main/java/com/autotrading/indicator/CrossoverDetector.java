@@ -112,11 +112,4 @@ public class CrossoverDetector {
         return result;
     }
 
-    /**
-     * Returns the current side of price relative to an MA (true = above), or null
-     * if no state has been recorded yet. Used for AND-rule state confirmation.
-     */
-    public Boolean isAbove(String stockKey, String frequency, int maPeriod) {
-        return aboveState.get(stockKey + ":" + frequency + ":" + maPeriod);
-    }
 }

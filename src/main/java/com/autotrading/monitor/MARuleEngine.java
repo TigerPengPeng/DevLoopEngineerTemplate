@@ -121,6 +121,7 @@ public class MARuleEngine {
         // Track which condition produced a crossover event this tick, and each
         // condition's current matching state.
         Condition triggered = null;
+        double triggeredMaValue = Double.NaN;
         boolean allStatesMatch = true;
 
         for (Condition c : rule.conditions) {
@@ -137,7 +138,7 @@ public class MARuleEngine {
 
             if (crossover == c.direction) {
                 // This condition's crossover event fired this tick.
-                if (triggered == null) triggered = c;
+                if (triggered == null) { triggered = c; triggeredMaValue = maValue; }
             }
 
             if (!stateMatches) allStatesMatch = false;
@@ -152,7 +153,7 @@ public class MARuleEngine {
         // OR: any crossover event fires.
 
         return new MAEvent(stockKey, stockName, triggered.maPeriod, triggered.direction,
-                price, maFor(stockKey, triggered.frequency, triggered.maPeriod),
+                price, triggeredMaValue,
                 session, triggered.frequency);
     }
 
